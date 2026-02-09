@@ -33,7 +33,7 @@ int kbdtoe_init(const char* dtoe_ip);
 /******************************************************************
   Prototype    : kbdtoe_uninit 
   Description  : dtoe 销毁函数
-  Return Value : 0 success， others-failed
+  Return Value : None
  **************************************************************/
 void kbdtoe_uninit();
 
@@ -47,33 +47,33 @@ void kbdtoe_uninit();
 int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn);
 
 /******************************************************************
-  Prototype    : libdtoe_thread_poll 
-  Description  : 分配4G的内存并完成虚拟地址物理地址的映射
+  Prototype    : kbdtoe_thread_poll 
+  Description  : 指定线程的轮询事件函数
   Intput       : int thread_index  线程的index
   Output       ：1) struct knet_recv_events recv_events[] 线程可读的事件信息
                  2) int *nr_recv_event  线程可读的事事件个数
-  Return Value : 0 success， others-failed
+  Return Value : None
  **************************************************************/
 void kbdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
 
 /******************************************************************
   Prototype    : kbdtoe_read 
   Description  : 语义类似read函数
-  Return Value : 0 success， others-failed
+  Return Value : 读到的字节数
  **************************************************************/
 ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte);
 
 /******************************************************************
   Prototype    : kbdtoe_write 
   Description  : 语义类似write函数
-  Return Value : 0 success， others-failed
+  Return Value : 写入的字节数
  **************************************************************/
 ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte);
 
 /******************************************************************
   Prototype    : kbdtoe_writev 
   Description  : 语义类似writev函数
-  Return Value : 0 success， others-failed
+  Return Value : 写入的字节数
  **************************************************************/
 ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt);
 
@@ -90,6 +90,5 @@ int kbdtoe_close(int fd);
   Return Value : 0 success， others-failed
  **************************************************************/
 bool is_conn_offload_success(void* libdtoe_conn);
-
 #endif
 

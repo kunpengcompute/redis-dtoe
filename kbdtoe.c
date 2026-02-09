@@ -16,7 +16,7 @@
 #include "dtoe_mempool_mr.h"
 
 static uint8_t g_thread_num = 1; // 默认单线程
-static uint8_t g_channel_num = 1; // 默认每个线程两对信道,redis 单实例最大支持1W，单对信道支持8k
+static uint8_t g_channel_num = 1; // 默认每个线程1对信道,redis 单实例最大支持1W，单对信道支持8k
 static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
 
 inline libdtoe_thread_pool_s* get_thread_pool(int idx)
