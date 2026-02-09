@@ -26,13 +26,13 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     }
     memcpy(ptr, buf, nbyte);
     struct knet_tx_req tx_req = {0};
-    struct knet_tx_desc tx_desc[1];
-    tx_req.descs = tx_desc;
-    tx_req.descs[0].iov.iov_base = ptr;
-    tx_req.descs[0].iov.iov_len = nbyte;
-    tx_req.descs[0].lkey = get_dtoe_mr_s()->lkey;
+    struct knet_iovec iov[1];
+    tx_req.iov = iov;
+    tx_req.iov[0].iov_base = ptr;
+    tx_req.iov[0].iov_len = nbyte;
+    tx_req.lkey = get_dtoe_mr_s()->lkey;
     tx_req.wr_id = (uint64_t)ptr;
-    tx_req.descs_num = 1;
+    tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req);
    return ret;
 }
@@ -56,13 +56,13 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         offset += iov[i].iov_len;
     }
     struct knet_tx_req tx_req = {0};
-    struct knet_tx_desc tx_desc[1];
-    tx_req.descs = tx_desc;
-    tx_req.descs[0].iov.iov_base = ptr;
-    tx_req.descs[0].iov.iov_len = total_size;
-    tx_req.descs[0].lkey = get_dtoe_mr_s()->lkey;
+    struct knet_iovec dtoe_iov[1];
+    tx_req.iov = dtoe_iov;
+    tx_req.iov[0].iov_base = ptr;
+    tx_req.iov[0].iov_len = total_size;
+    tx_req.lkey = get_dtoe_mr_s()->lkey;
     tx_req.wr_id = (uint64_t)ptr;
-    tx_req.descs_num = 1;
+    tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req);
    return ret;
 }

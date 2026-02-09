@@ -21,15 +21,8 @@
     int iov_cnt = 0;
     struct knet_iovec iovs[DTOE_RECV_MAX_DESC_NUM];
     ssize_t read_length = 0;
-    struct knet_rx_desc recv_desc;
+    struct knet_iovec iov;
     libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(fd);
-    if (conn->offload_status == DTOE_OFFLOAD_START) {
-        errno = EAGAIN;
-        return -1;
-    } else if (conn->offload_status == DTOE_OFFLOAD_FAIL) {
-        return 0;
-    }
-
     /** 解决卸载过程中数据丢包问题 */
     ssize_t leaked_size = knet_get_leaked_packet_size(fd);
     if (unlikely(leaked_size > 0)) {
@@ -47,6 +40,7 @@
         conn->leaked_size = leaked_size;
         conn->read_leaked_offset = 0;
     }
+
     if (unlikely(conn->leaked_size > 0)) {
         if (conn->leaked_size > nbyte) {
             memcpy(buf + read_length, conn->leaked_buff + conn->read_leaked_offset, nbyte);
@@ -65,7 +59,7 @@
 
     while (__atomic_load_n(&conn->recv_desc_num, __ATOMIC_RELAXED) && (read_length < nbyte) && (iov_cnt < DTOE_RECV_MAX_DESC_NUM)) {
         if (conn->recv_desc.data_remain == 0) {
-            ret = knet_recv(conn->fd, &recv_desc, 1, 0);
+            ret = knet_recv(conn->fd, &iov, 1);
             if (ret < 0) {
                 knet_recv_mem_loopback(iovs, iov_cnt);
                 KBDTOE_ERR("kbdtoe conn:%p, knet recv failed, error =%d!", conn, ret);
@@ -74,39 +68,40 @@
                     conn->conn_status = DTOE_CONN_PRE_CLOSING;
                 }
                 return 0;
-            } else if (recv_desc.iov.iov_base == NULL) {
+            } else if (iov.iov_base == NULL) {
                 KBDTOE_ERR("knet_rev debug!!!");
+                knet_recv_mem_loopback(iovs, iov_cnt);
                 knet_prepare_close(conn->fd);
                 return 0;
             }
         } else {
-            recv_desc = conn->recv_desc.desc;
+            iov = conn->recv_desc.iov;
         }
 
-        if ((read_length + recv_desc.iov.iov_len) <= nbyte) {
-            memcpy(buf + read_length, recv_desc.iov.iov_base, recv_desc.iov.iov_len);
-            read_length += recv_desc.iov.iov_len;
+        if ((read_length + iov.iov_len) <= nbyte) {
+            memcpy(buf + read_length, iov.iov_base, iov.iov_len);
+            read_length += iov.iov_len;
             (void)__atomic_fetch_sub(&conn->recv_desc_num, 1, __ATOMIC_SEQ_CST);
 
             if (conn->recv_desc.data_remain != 0) {
                 iovs[iov_cnt].iov_base = conn->recv_desc.iov_origin.iov_base;
                 iovs[iov_cnt].iov_len = conn->recv_desc.iov_origin.iov_len;
             } else {
-                iovs[iov_cnt].iov_base = recv_desc.iov.iov_base;
-                iovs[iov_cnt].iov_len = recv_desc.iov.iov_len;
+                iovs[iov_cnt].iov_base = iov.iov_base;
+                iovs[iov_cnt].iov_len = iov.iov_len;
             }
             iov_cnt++;
             conn->recv_desc.data_remain = 0;
         } else {
-            memcpy((buf + read_length), recv_desc.iov.iov_base, (nbyte - read_length));
+            memcpy((buf + read_length), iov.iov_base, (nbyte - read_length));
             if (conn->recv_desc.data_remain == 0) {
                 conn->recv_desc.data_remain = 1;
-                conn->recv_desc.iov_origin.iov_base = recv_desc.iov.iov_base;
-                conn->recv_desc.iov_origin.iov_len = recv_desc.iov.iov_len;
+                conn->recv_desc.iov_origin.iov_base = iov.iov_base;
+                conn->recv_desc.iov_origin.iov_len = iov.iov_len;
             }
-            recv_desc.iov.iov_base += (nbyte - read_length);
-            recv_desc.iov.iov_len -= (nbyte - read_length);
-            conn->recv_desc.desc = recv_desc;
+            iov.iov_base += (nbyte - read_length);
+            iov.iov_len -= (nbyte - read_length);
+            conn->recv_desc.iov = iov;
             read_length = nbyte;
         }
     }

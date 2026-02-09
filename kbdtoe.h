@@ -90,5 +90,7 @@ int kbdtoe_close(int fd);
   Return Value : 0 success， others-failed
  **************************************************************/
 bool is_conn_offload_success(void* libdtoe_conn);
+
+void set_conn_offload_status(void* libdtoe_conn);
 #endif
 

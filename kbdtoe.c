@@ -31,6 +31,12 @@ inline libdtoe_thread_pool_s* get_thread_pool(int idx)
 /*****************************  callback function start *****************************/
 void libdtoe_close_done(int sockfd)
 {
+    close(sockfd);
+    sockfd = -1;
+}
+
+void libdtoe_prepare_close_done(int sockfd)
+{
     libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(sockfd);
     conn->conn_status = DTOE_CONN_CLOSED;
     libdtoe_thread_pool_s *thread_info = (libdtoe_thread_pool_s *)conn->thread_pool_ptr;
@@ -40,8 +46,6 @@ void libdtoe_close_done(int sockfd)
     TAILQ_INSERT_TAIL(&thread_info->connection.free_conns,conn, free_node);
     pthread_spin_unlock(&(thread_info->connection.offload_lock));
     knet_close(sockfd);
-    close(sockfd);
-    sockfd = -1;
 }
 
 void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
@@ -49,7 +53,7 @@ void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
     libdtoe_conn_s *conn = (libdtoe_conn_s*)knet_get_ulp_user_data(sockfd);
     libdtoe_thread_pool_s *thread_info = (libdtoe_thread_pool_s*) conn->thread_pool_ptr;
     if (rsp_status != KNET_ASYNC_OFFLOAD_SUCCESS || conn->conn_status > DTOE_CONN_WORKING) {
-        KBDTOE_ERR("libdtoe conn async offload failed");
+        KBDTOE_ERR("sockfd=%d async offload failed, rsp_status:%d  conn_status:%d", sockfd, rsp_status, conn->conn_status);
         knet_prepare_close(sockfd);
         conn->offload_status = DTOE_OFFLOAD_FAIL;
         return;
@@ -59,13 +63,12 @@ void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
         thread_info->connection.offload_num++;
     }
     conn->offload_status = DTOE_OFFLOAD_SUCCESS;
-    printf("sockfd=%d tcp offload success\n", sockfd);
 }
 /*****************************  callback function end *****************************/
 
 struct knet_ulp_ops g_dtoe_ulp_ops = {
-    .close_done = NULL,
-    .prepare_close_done = libdtoe_close_done,
+    .close_done = libdtoe_close_done,
+    .prepare_close_done = libdtoe_prepare_close_done,
     .conn_async_offload_done = libdtoe_conn_async_offload_done,
 };
 
@@ -118,7 +121,6 @@ static int libdtoe_prepare_mbuf(libdtoe_thread_pool_s *thread_info)
         libdtoe_destory_mbuf(thread_info);
         return DTOE_FAIL;
     }
-
     KBDTOE_INFO("libdtoe_prepare_mbuf is success");
     return 0;
 }
@@ -206,6 +208,7 @@ int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn)
     struct knet_offload_in in = {0};
 	in.user_data = conn;
     conn->offload_status = DTOE_OFFLOAD_START;
+    conn->conn_status = DTOE_CONN_CREATING;
     conn->fd = sockfd;
 	in.send_channel = thread_info->send_channel[thread_info->epoch];
 	in.recv_channel = thread_info->recv_channel[thread_info->epoch];
@@ -233,6 +236,15 @@ inline bool is_conn_offload_success(void* libdtoe_conn)
    }
    libdtoe_conn_s* conn = (libdtoe_conn_s*)libdtoe_conn;
    return conn->offload_status == DTOE_OFFLOAD_SUCCESS;
+}
+
+void set_conn_offload_status(void* libdtoe_conn)
+{
+    if (libdtoe_conn == NULL) {
+        return;
+    }
+    libdtoe_conn_s* conn = (libdtoe_conn_s*)libdtoe_conn;
+    conn->offload_status = DTOE_OFFLOAD_PRECLOSE;
 }
 
 int kbdtoe_close(int fd)

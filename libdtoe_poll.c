@@ -27,6 +27,6 @@ void kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], i
     *nr_recv_event = knet_poll_recv_channel(thread_pool->recv_channel[0], recv_events, DTOE_RECV_MAX_DESC_NUM);
     for (int i = 0; i < *nr_recv_event; ++i) {
         libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(recv_events[i].sockfd);
-        __atomic_add_fetch(&conn->recv_desc_num, recv_events[i].desc_cnt, __ATOMIC_SEQ_CST);
+        __atomic_add_fetch(&conn->recv_desc_num, recv_events[i].iov_cnt, __ATOMIC_SEQ_CST);
     }
 }

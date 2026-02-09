@@ -71,6 +71,7 @@ typedef enum {
     DTOE_OFFLOAD_START,
     DTOE_OFFLOAD_SUCCESS,
     DTOE_OFFLOAD_FAIL,
+    DTOE_OFFLOAD_PRECLOSE,
 } libdtoe_thread_offload_status_e;
 
 typedef enum {
@@ -119,7 +120,7 @@ typedef struct libdtoe_recv_hdr {
 
 typedef struct libdtoe_tx_desc_node {
     TAILQ_ENTRY(libdtoe_tx_desc_node) tx_desc_node;
-    struct knet_tx_desc desc;
+    // struct knet_tx_desc desc;
     uint16_t send_sn;
     libdtoe_send_status_e send_status;
 } libdtoe_tx_desc_node_s;
@@ -144,7 +145,7 @@ TAILQ_HEAD(libdtoe_tx_desc_head, libdtoe_tx_desc_node);
 // } libdtoe_send_desc_s;
 
 typedef struct libdtoe_recv_desc {
-    struct knet_rx_desc desc;
+    struct knet_iovec iov;
     int data_remain;
     struct knet_iovec  iov_origin;
 }libdtoe_recv_desc_s;

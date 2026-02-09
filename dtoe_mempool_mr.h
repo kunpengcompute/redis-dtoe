@@ -11,14 +11,12 @@
 *
 * Encapsulate dtoe interface
 */
-
 #ifndef DTOE_MEMPOOL_MR_H
 #define DTOE_MEMPOOL_MR_H
 
 #include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
-
 #include "knet_dtoe_api.h"
 
 /******************************************************************
