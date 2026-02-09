@@ -69,7 +69,7 @@ static int size_to_level(size_t size)
 {
     size_t block_size = MIN_BLOCK_SIZE;
     int level = 0;
-    while ((block_size < size) && (level < (MAX_LEVEL -1))) {
+    while ((block_size < size) && (level < (MAX_LEVEL - 1))) {
         block_size <<= 1;
         level++;
     }
@@ -426,36 +426,3 @@ void dtoe_mempool_destroy()
     g_memory_pool = NULL;
     knet_unreg_mr(g_dmr);
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
