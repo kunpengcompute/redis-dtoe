@@ -11,12 +11,12 @@
 *
 * Encapsulate dtoe interface
 */
-#include<stdio.h>
+#include <stdio.h>
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
 
- ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
- {
+ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
+{
     int ret = 0; 
     int iov_cnt = 0;
     struct knet_iovec iovs[DTOE_RECV_MAX_DESC_NUM];
@@ -109,4 +109,4 @@
         knet_recv_mem_loopback(iovs, iov_cnt);
     }
     return read_length;
- }
+}

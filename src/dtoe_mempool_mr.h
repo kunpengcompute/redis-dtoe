@@ -13,7 +13,9 @@
 */
 #ifndef DTOE_MEMPOOL_MR_H
 #define DTOE_MEMPOOL_MR_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
@@ -21,7 +23,7 @@
 
 /******************************************************************
   Prototype    : dtoe_mempool_init 
-  Description  : 分配4G的内存并完成虚拟地址物理地址的映射
+  Description  : 分配1G的内存并完成虚拟地址物理地址的映射
   Return Value : 0 success， others-failed
  **************************************************************/
 int dtoe_mempool_init();
@@ -71,4 +73,7 @@ struct knet_mr *get_dtoe_mr_s();
   Return Value : None
  **************************************************************/
 void dtoe_mp_stats();
+#ifdef __cplusplus
+}
+#endif
 #endif

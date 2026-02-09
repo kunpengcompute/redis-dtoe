@@ -11,7 +11,7 @@
 *
 * Encapsulate dtoe interface
 */
-#include<stdio.h>
+#include <stdio.h>
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
 
@@ -64,5 +64,5 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     tx_req.wr_id = (uint64_t)ptr;
     tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req);
-   return ret;
+    return ret;
 }

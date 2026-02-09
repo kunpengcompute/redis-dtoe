@@ -11,14 +11,11 @@
 *
 * Encapsulate dtoe interface
 */
-
 #ifndef KB_DTOE_BASE_H
 #define KB_DTOE_BASE_H
-
-// #include <stdatomic.h>
 #include <string.h>
-#include<sched.h>
-#include<unistd.h>
+#include <sched.h>
+#include <unistd.h>
 #include <inttypes.h>
 #include <stddef.h>
 #include <sys/queue.h>
@@ -27,7 +24,6 @@
 #include <stdlib.h>
 #include <sys/uio.h>
 #include <syslog.h>
-
 #include "knet_dtoe_api.h"
 
 /** 日志接口必须在knet_init之后才可以调用 */
@@ -120,7 +116,6 @@ typedef struct libdtoe_recv_hdr {
 
 typedef struct libdtoe_tx_desc_node {
     TAILQ_ENTRY(libdtoe_tx_desc_node) tx_desc_node;
-    // struct knet_tx_desc desc;
     uint16_t send_sn;
     libdtoe_send_status_e send_status;
 } libdtoe_tx_desc_node_s;
@@ -136,14 +131,6 @@ typedef struct libdtoe_req_node {
 
 TAILQ_HEAD(libdtoe_tx_desc_head, libdtoe_tx_desc_node);
 
-// typedef struct libdtoe_send_desc {
-//     pthread_spinlock_t send_lock;
-//     struct libdtoe_tx_desc_head free_desc;
-//     struct libdtoe_tx_desc_head used_desc;
-//     int desc_num;
-//     int offset;
-// } libdtoe_send_desc_s;
-
 typedef struct libdtoe_recv_desc {
     struct knet_iovec iov;
     int data_remain;
@@ -152,20 +139,16 @@ typedef struct libdtoe_recv_desc {
 
 typedef struct libdtoe_conn {
     void* node;
-    // void* dtoe_conn;
     libdtoe_conn_status_e conn_status;
-    // libdtoe_send_status_e send_status;
     uint32_t recv_status;
     char *send_buf;
     char *long_buf;
     uint16_t recv_desc_num;
     uint16_t pad;
     int recv_len;
-    // libdtoe_context_cb_s ctx;
     struct knet_send_channel *send_channel;
     struct knet_recv_channel *recv_channel;
     libdtoe_req_node_s req;
-    // libdtoe_send_desc_s send_desc;
     libdtoe_recv_desc_s recv_desc;
     void (*process_cb) (void *, int);
     int data_recv;
@@ -197,14 +180,14 @@ typedef struct libdtoe_node {
     struct libdtoe_node *next_node;
 } libdtoe_node_s;
 
-typedef struct  libdtoe_thread_pool {
+typedef struct libdtoe_thread_pool {
     void *node;
     libdtoe_conn_pool_s connection;
     uint32_t channel_num;
     struct knet_send_channel* send_channel[DTOE_CHANNEL_NUM_MAX];
     struct knet_recv_channel* recv_channel[DTOE_CHANNEL_NUM_MAX];
     struct knet_mr *send_mr;
-    uint32_t  epoch; /*当前轮询到的channel位置*/
+    uint32_t epoch; /*当前轮询到的channel位置*/
 } libdtoe_thread_pool_s;
 
 libdtoe_thread_pool_s* get_thread_pool(int idx);

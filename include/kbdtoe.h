@@ -13,13 +13,14 @@
 */
 #ifndef KB_DTOE_H
 #define KB_DTOE_H
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/uio.h>
-
 #include "knet_dtoe_api.h"
 
 /******************************************************************
@@ -41,10 +42,9 @@ void kbdtoe_uninit();
   Prototype    : kbdtoe_conn_start_offload 
   Description  : 单个TCP连接开始卸载的函数，必须在accept之后调用
   Input        : int sockfd TCP accept之后的sock fd
-  Output       : void** libdtoe_conn 单个连接信息
   Return Value : 0 success， others-failed
  **************************************************************/
-int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn);
+int kbdtoe_conn_start_offload(int sockfd);
 
 /******************************************************************
   Prototype    : kbdtoe_thread_poll 
@@ -85,12 +85,30 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt);
 int kbdtoe_close(int fd);
 
 /******************************************************************
-  Prototype    : is_conn_offload_success 
+  Prototype    : kbdtoe_is_conn_offload_success 
   Description  : 判断单个dtoe连接是否卸载完成
+  Input        : int sockfd TCP accept之后的sock fd
   Return Value : 0 success， others-failed
  **************************************************************/
-bool is_conn_offload_success(void* libdtoe_conn);
+bool kbdtoe_is_conn_offload_success(int sockfd);
 
-void set_conn_offload_status(void* libdtoe_conn);
+/******************************************************************
+  Prototype    : kbdtoe_is_conn_offload 
+  Description  : 判断单个socket fd 是否进行dtoe 卸载
+  Input        : int sockfd TCP accept之后的sock fd
+  Return Value : 0 success， others-failed
+ **************************************************************/
+bool kbdtoe_is_conn_offload(int sockfd);
+
+/******************************************************************
+  Prototype    : kbdtoe_conn_status_for_close
+  Description  : 设置卸载TCP进行预上载
+  Input        : int sockfd TCP accept之后的sock fd
+  Return Value : None
+ **************************************************************/
+void kbdtoe_conn_status_for_close(int sockfd);
+#ifdef __cplusplus
+}
+#endif
 #endif
 
