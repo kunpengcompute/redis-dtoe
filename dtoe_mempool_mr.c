@@ -20,11 +20,11 @@
 #include "knet_dtoe_api.h"
 #include "kbdtoe_base.h"
 
-static const size_t SLAB_OBJ_SIZES[] = {8, 64, 128, 256};
-#define POOL_SIZE   (4ULL * 1024 * 1024 * 1024)
+static const size_t SLAB_OBJ_SIZES[] = {8, 16, 128, 512, 1024};
+#define POOL_SIZE (1ULL * 1024 * 1024 * 1024)
 #define MIN_BLOCK_SIZE  32
 #define MAX_LEVEL   32
-#define SLAB_SIZE   4096
+#define SLAB_SIZE   16384
 #define NUM_SLAB_CACHES (sizeof(SLAB_OBJ_SIZES) / sizeof(SLAB_OBJ_SIZES[0]))
 #define MAGIC_SLAB 0x534C4142u  // "SLAB"
 #define MAGIC_BUDDY 0x42444459u  // "BDDY"

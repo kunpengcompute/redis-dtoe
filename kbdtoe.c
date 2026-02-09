@@ -229,4 +229,5 @@ inline bool is_conn_offload_success(void* libdtoe_conn)
 void kbdtoe_uninit()
 {
     knet_uninit();
+    dtoe_mempool_destroy();
 }
