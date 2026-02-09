@@ -39,6 +39,7 @@ void libdtoe_close_done(int sockfd)
     pthread_spin_lock (&(thread_info->connection.offload_lock));
     TAILQ_INSERT_TAIL(&thread_info->connection.free_conns,conn, free_node);
     pthread_spin_unlock(&(thread_info->connection.offload_lock));
+    knet_close(sockfd);
 }
 
 void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
@@ -224,6 +225,12 @@ inline bool is_conn_offload_success(void* libdtoe_conn)
    }
    libdtoe_conn_s* conn = (libdtoe_conn_s*)libdtoe_conn;
    return conn->offload_status == DTOE_OFFLOAD_SUCCESS;
+}
+
+int kbdtoe_close(int fd)
+{
+   knet_prepare_close(fd);
+   return 0;
 }
 
 void kbdtoe_uninit()
