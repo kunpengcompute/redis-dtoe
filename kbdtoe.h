@@ -1,0 +1,95 @@
+/*
+* Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+* kraio is licensed under the Mulan PSL v2.
+* You can use this software according to the terms and conditions of the Mulan PSL v2.
+* You may obtain a copy of Mulan PSL v2 at:
+*     http://license.coscl.org.cn/MulanPSL2
+* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
+* PURPOSE.
+* See the Mulan PSL v2 for more details.
+*
+* Encapsulate dtoe interface
+*/
+#ifndef KB_DTOE_H
+#define KB_DTOE_H
+
+#include <string.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <sys/uio.h>
+
+#include "knet_dtoe_api.h"
+
+/******************************************************************
+  Prototype    : kbdtoe_init
+  Description  : dtoe 初始化函数
+  Input        : const char* dtoe_ip  dtoe网卡
+  Return Value : 0 success， others-failed
+ **************************************************************/
+int kbdtoe_init(const char* dtoe_ip);
+
+/******************************************************************
+  Prototype    : kbdtoe_uninit 
+  Description  : dtoe 销毁函数
+  Return Value : 0 success， others-failed
+ **************************************************************/
+void kbdtoe_uninit();
+
+/******************************************************************
+  Prototype    : kbdtoe_conn_start_offload 
+  Description  : 单个TCP连接开始卸载的函数，必须在accept之后调用
+  Input        : int sockfd TCP accept之后的sock fd
+  Output       : void** libdtoe_conn 单个连接信息
+  Return Value : 0 success， others-failed
+ **************************************************************/
+int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn);
+
+/******************************************************************
+  Prototype    : libdtoe_thread_poll 
+  Description  : 分配4G的内存并完成虚拟地址物理地址的映射
+  Intput       : int thread_index  线程的index
+  Output       ：1) struct knet_recv_events recv_events[] 线程可读的事件信息
+                 2) int *nr_recv_event  线程可读的事事件个数
+  Return Value : 0 success， others-failed
+ **************************************************************/
+void libdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
+
+/******************************************************************
+  Prototype    : kbdtoe_read 
+  Description  : 语义类似read函数
+  Return Value : 0 success， others-failed
+ **************************************************************/
+ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte);
+
+/******************************************************************
+  Prototype    : kbdtoe_write 
+  Description  : 语义类似write函数
+  Return Value : 0 success， others-failed
+ **************************************************************/
+ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte);
+
+/******************************************************************
+  Prototype    : kbdtoe_writev 
+  Description  : 语义类似writev函数
+  Return Value : 0 success， others-failed
+ **************************************************************/
+ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt);
+
+/******************************************************************
+  Prototype    : kbdtoe_close 
+  Description  : 释放单个dtoe连接的资源
+  Return Value : 0 success， others-failed
+ **************************************************************/
+int kbdtoe_close(int fd);
+
+/******************************************************************
+  Prototype    : is_conn_offload_success 
+  Description  : 判断单个dtoe连接是否卸载完成
+  Return Value : 0 success， others-failed
+ **************************************************************/
+bool is_conn_offload_success(void* libdtoe_conn);
+
+#endif
+

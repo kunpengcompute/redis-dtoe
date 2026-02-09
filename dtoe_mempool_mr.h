@@ -1,0 +1,76 @@
+/*
+* Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
+* kraio is licensed under the Mulan PSL v2.
+* You can use this software according to the terms and conditions of the Mulan PSL v2.
+* You may obtain a copy of Mulan PSL v2 at:
+*     http://license.coscl.org.cn/MulanPSL2
+* THIS SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR
+* IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT, MERCHANTABILITY OR FIT FOR A PARTICULAR
+* PURPOSE.
+* See the Mulan PSL v2 for more details.
+*
+* Encapsulate dtoe interface
+*/
+
+#ifndef DTOE_MEMPOOL_MR_H
+#define DTOE_MEMPOOL_MR_H
+
+#include <inttypes.h>
+#include <stdint.h>
+#include <stddef.h>
+
+#include "knet_dtoe_api.h"
+
+/******************************************************************
+  Prototype    : dtoe_mempool_init 
+  Description  : 分配4G的内存并完成虚拟地址物理地址的映射
+  Return Value : 0 success， others-failed
+ **************************************************************/
+int dtoe_mempool_init();
+
+/******************************************************************
+  Prototype    : dtoe_mempool_destroy 
+  Description  : 释放内存池
+  Input        : None
+  Output       : None
+  Return Value : None
+ **************************************************************/
+void dtoe_mempool_destroy();
+
+/******************************************************************
+  Prototype    : dtoe_mempool_alloc 
+  Description  : 从内存池获取所需要大小内存的起始地址
+  Input        : size_t size: 需要内存的大小
+  Output       : None
+  Return Value : NULL failed, others return start address
+ **************************************************************/
+void* dtoe_mempool_alloc(size_t size);
+
+/******************************************************************
+  Prototype    : dtoe_mempool_free 
+  Description  : 将内存归还到内存池
+  Input        : void *ptr: dtoe成功初始化后的设备序列号
+  Output       : None
+  Return Value : None
+ **************************************************************/
+void dtoe_mempool_free(void *ptr);
+
+
+/******************************************************************
+  Prototype    : get_dtoe_mr_s
+  Description  : 注册成功后放回的MR信息，发生数据时需要用到,可选
+  Input        : None
+  Output       : None
+  Return Value : struct knet_mr:注册成功后放回的MR信息
+ **************************************************************/
+struct knet_mr *get_dtoe_mr_s();
+
+/******************************************************************
+  Prototype    : dtoe_mp_stats
+  Description  : 打印内存使用情况
+  Input        : None
+  Output       : None
+  Return Value : None
+ **************************************************************/
+void dtoe_mp_stats();
+#endif
