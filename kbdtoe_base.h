@@ -35,6 +35,8 @@
 #define KBDTOE_WARN(fmt, args...) knet_log(__func__, __LINE__, LOG_WARNING, "[WARN] " fmt, ##args)
 #define KBDTOE_INFO(fmt, args...) knet_log(__func__, __LINE__, LOG_INFO, "[INFO] " fmt, ##args)
 #define KBDTOE_DEBUG(fmt, args...) knet_log(__func__, __LINE__, LOG_DEBUG, "[DEBUG] " fmt, ##args)
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
 
 #define DTOE_FAIL               (-1)
 #define DTOE_SUCCESS            (0)
@@ -66,8 +68,9 @@
 TAILQ_HEAD(libdtoe_conn_head, libdtoe_conn);
 typedef enum {
     DTOE_OFFLOAD_WAIT = 0,
+    DTOE_OFFLOAD_START,
+    DTOE_OFFLOAD_SUCCESS,
     DTOE_OFFLOAD_FAIL,
-    DTOE_OFFLOAD_SUCCESS
 } libdtoe_thread_offload_status_e;
 
 typedef enum {
@@ -173,6 +176,9 @@ typedef struct libdtoe_conn {
     TAILQ_ENTRY(libdtoe_conn) free_node;
     int fd;
     int mask;
+    ssize_t leaked_size;
+    ssize_t read_leaked_offset;
+    void* leaked_buff;
 } libdtoe_conn_s;
 
 typedef struct libdtoe_conn_pool {

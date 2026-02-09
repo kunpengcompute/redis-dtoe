@@ -23,20 +23,61 @@
     ssize_t read_length = 0;
     struct knet_rx_desc recv_desc;
     libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(fd);
+    if (conn->offload_status == DTOE_OFFLOAD_START) {
+        errno = EAGAIN;
+        return -1;
+    } else if (conn->offload_status == DTOE_OFFLOAD_FAIL) {
+        return 0;
+    }
+
+    /** 解决卸载过程中数据丢包问题 */
+    ssize_t leaked_size = knet_get_leaked_packet_size(fd);
+    if (unlikely(leaked_size > 0)) {
+        conn->leaked_buff = malloc(leaked_size);
+        if (conn->leaked_buff == NULL) {
+            KBDTOE_ERR("kbdtoe read malloc leaked buff failed");
+            return 0;
+        }
+        ssize_t recved_bytes = knet_recv_leaked_packet(fd, conn->leaked_buff, leaked_size);
+        if (recved_bytes < 0) {
+            KBDTOE_ERR("kbdtoe read leaked packet failed");
+            free(conn->leaked_buff);
+            return 0;
+        }
+        conn->leaked_size = leaked_size;
+        conn->read_leaked_offset = 0;
+    }
+    if (unlikely(conn->leaked_size > 0)) {
+        if (conn->leaked_size > nbyte) {
+            memcpy(buf + read_length, conn->leaked_buff + conn->read_leaked_offset, nbyte);
+            conn->read_leaked_offset += nbyte;
+            conn->leaked_size -= nbyte;
+            return nbyte;
+        } else {
+            memcpy(buf + read_length, conn->leaked_buff + conn->read_leaked_offset, conn->leaked_size);
+            nbyte -= conn->leaked_size;
+            read_length += conn->leaked_size;
+            conn->leaked_size = 0;
+            free(conn->leaked_buff);
+            conn->leaked_buff = NULL;
+        }
+    }
+
     while (__atomic_load_n(&conn->recv_desc_num, __ATOMIC_RELAXED) && (read_length < nbyte) && (iov_cnt < DTOE_RECV_MAX_DESC_NUM)) {
         if (conn->recv_desc.data_remain == 0) {
             ret = knet_recv(conn->fd, &recv_desc, 1, 0);
             if (ret < 0) {
                 knet_recv_mem_loopback(iovs, iov_cnt);
-                KBDTOE_ERR("kbdtoe conn:%p, knet recv failed, error =%d!\n", conn, ret);
+                KBDTOE_ERR("kbdtoe conn:%p, knet recv failed, error =%d!", conn, ret);
                 if (ret == -ECONNRESET) {
                     knet_prepare_close(conn->fd);
                     conn->conn_status = DTOE_CONN_PRE_CLOSING;
                 }
-                return -1;
+                return 0;
             } else if (recv_desc.iov.iov_base == NULL) {
-                KBDTOE_ERR("knet_rev debug!!!\n");
-                return -1;
+                KBDTOE_ERR("knet_rev debug!!!");
+                knet_prepare_close(conn->fd);
+                return 0;
             }
         } else {
             recv_desc = conn->recv_desc.desc;

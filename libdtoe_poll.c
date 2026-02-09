@@ -15,7 +15,7 @@
 #include "kbdtoe.h"
 #include "dtoe_mempool_mr.h"
 
-void libdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], int *nr_recv_event)
+void kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], int *nr_recv_event)
 {
     libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
     struct knet_send_events send_events[DTOE_CONN_PER_CHNL];

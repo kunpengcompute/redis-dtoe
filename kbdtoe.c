@@ -22,7 +22,7 @@ static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
 inline libdtoe_thread_pool_s* get_thread_pool(int idx)
 {
     if (idx < 0 || idx >= DTOE_THREAD_MAX) {
-        KBDTOE_ERR("invalid thread pool index, idx=%d \n", idx);
+        KBDTOE_ERR("invalid thread pool index, idx=%d", idx);
         return NULL;
     }
     return &g_thread_pool[idx];
@@ -40,6 +40,8 @@ void libdtoe_close_done(int sockfd)
     TAILQ_INSERT_TAIL(&thread_info->connection.free_conns,conn, free_node);
     pthread_spin_unlock(&(thread_info->connection.offload_lock));
     knet_close(sockfd);
+    close(sockfd);
+    sockfd = -1;
 }
 
 void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
@@ -47,7 +49,9 @@ void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
     libdtoe_conn_s *conn = (libdtoe_conn_s*)knet_get_ulp_user_data(sockfd);
     libdtoe_thread_pool_s *thread_info = (libdtoe_thread_pool_s*) conn->thread_pool_ptr;
     if (rsp_status != KNET_ASYNC_OFFLOAD_SUCCESS || conn->conn_status > DTOE_CONN_WORKING) {
+        KBDTOE_ERR("libdtoe conn async offload failed");
         knet_prepare_close(sockfd);
+        conn->offload_status = DTOE_OFFLOAD_FAIL;
         return;
 	}
     if (conn->conn_status == DTOE_CONN_CREATING) {
@@ -55,6 +59,7 @@ void libdtoe_conn_async_offload_done(int sockfd, uint8_t rsp_status)
         thread_info->connection.offload_num++;
     }
     conn->offload_status = DTOE_OFFLOAD_SUCCESS;
+    printf("sockfd=%d tcp offload success\n", sockfd);
 }
 /*****************************  callback function end *****************************/
 
@@ -114,7 +119,7 @@ static int libdtoe_prepare_mbuf(libdtoe_thread_pool_s *thread_info)
         return DTOE_FAIL;
     }
 
-    KBDTOE_INFO("libdtoe_prepare_mbuf is success\n");
+    KBDTOE_INFO("libdtoe_prepare_mbuf is success");
     return 0;
 }
 
@@ -124,19 +129,19 @@ static int libdtoe_all_threads_create_channel()
     for (int i = 0; i < g_thread_num; ++i) {
         ret = libdtoe_prepare_mbuf(&g_thread_pool[i]);
         if (ret != DTOE_SUCCESS) {
-            KBDTOE_ERR("libdtoe prepare mbuf failed\n");
+            KBDTOE_ERR("libdtoe prepare mbuf failed");
             return DTOE_FAIL;
         }
         for (int j = 0; j < (g_channel_num / g_thread_num); ++j) {
             ret = knet_create_send_channel(KNET_POLL_SCHD, DTOE_RING_SSQ_DEPTH, &g_thread_pool[i].send_channel[j]);
             if (ret != 0) {
-                KBDTOE_ERR("create send channel failed, ret %d\n", ret);
+                KBDTOE_ERR("create send channel failed, ret %d", ret);
                 libdtoe_destory_mbuf(&g_thread_pool[i]);
                 return DTOE_FAIL;
             }
             ret = knet_create_recv_channel(KNET_POLL_SCHD, DTOE_RING_SRQ_DEPTH, &g_thread_pool[i].recv_channel[j]);
             if (ret != 0) {
-                KBDTOE_ERR("create recv channel failed, ret %d\n", ret);
+                KBDTOE_ERR("create recv channel failed, ret %d", ret);
                 libdtoe_destory_mbuf(&g_thread_pool[i]);
                 return DTOE_FAIL;
             }
@@ -152,22 +157,22 @@ int kbdtoe_init(const char* dtoe_ip)
     knet_ulp_ops_register(&g_dtoe_ulp_ops);
     ret = knet_init(dtoe_ip);
     if (ret != 0) {
-        KBDTOE_ERR("knet init failed, ret %d, dtoe_ip %s\n", ret, dtoe_ip);
+        KBDTOE_ERR("knet init failed, ret %d, dtoe_ip %s", ret, dtoe_ip);
         return DTOE_FAIL;
     }
     ret = libdtoe_init_conn_pool_per_thread();
     if (ret != DTOE_SUCCESS) {
-        KBDTOE_ERR("kbdtoe init conn pool failed\n");
+        KBDTOE_ERR("kbdtoe init conn pool failed");
         return DTOE_FAIL;
     }
     ret = libdtoe_all_threads_create_channel();
     if (ret != DTOE_SUCCESS) {
-        KBDTOE_ERR("kbdtoe init thread channel failed\n");
+        KBDTOE_ERR("kbdtoe init thread channel failed");
         return DTOE_FAIL;
     }
     ret = dtoe_mempool_init();
     if (ret != DTOE_SUCCESS) {
-        KBDTOE_ERR("kbdtoe init memory pool failed\n");
+        KBDTOE_ERR("kbdtoe init memory pool failed");
         return DTOE_FAIL;
     }
     KBDTOE_INFO("kbdtoe_init success !!!\n");
@@ -200,6 +205,7 @@ int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn)
     thread_info->epoch %= thread_info->channel_num;
     struct knet_offload_in in = {0};
 	in.user_data = conn;
+    conn->offload_status = DTOE_OFFLOAD_START;
     conn->fd = sockfd;
 	in.send_channel = thread_info->send_channel[thread_info->epoch];
 	in.recv_channel = thread_info->recv_channel[thread_info->epoch];
@@ -209,6 +215,8 @@ int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn)
     }
     conn->send_channel = in.send_channel;
     conn->recv_channel = in.recv_channel;
+    conn->leaked_size = 0;
+    conn->read_leaked_offset = 0;
     return DTOE_SUCCESS;
 }
 

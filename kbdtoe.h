@@ -54,7 +54,7 @@ int kbdtoe_conn_start_offload(int sockfd, void** libdtoe_conn);
                  2) int *nr_recv_event  线程可读的事事件个数
   Return Value : 0 success， others-failed
  **************************************************************/
-void libdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
+void kbdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
 
 /******************************************************************
   Prototype    : kbdtoe_read 

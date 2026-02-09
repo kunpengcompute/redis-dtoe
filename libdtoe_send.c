@@ -21,7 +21,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     unsigned char *ptr = NULL;
     ptr = (unsigned char*)dtoe_mempool_alloc(nbyte);
     if (ptr == NULL) {
-        KBDTOE_ERR("kbdtoe write mempool alloc fail\n");
+        KBDTOE_ERR("kbdtoe write mempool alloc fail");
         return -EAGAIN; 
     }
     memcpy(ptr, buf, nbyte);
@@ -47,7 +47,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     unsigned char *ptr = NULL;
     ptr = (unsigned char*)dtoe_mempool_alloc(total_size);
     if (ptr == NULL) {
-        KBDTOE_ERR("kbdtoe writev mempool alloc fail\n");
+        KBDTOE_ERR("kbdtoe writev mempool alloc fail");
         return -EAGAIN; 
     }
     size_t offset = 0;
