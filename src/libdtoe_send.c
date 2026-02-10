@@ -14,17 +14,25 @@
 #include <stdio.h>
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
+#include "securec.h"
 
 ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
 {
     int ret = 0;
+    int memcpy_ret;
     unsigned char *ptr = NULL;
     ptr = (unsigned char*)dtoe_mempool_alloc(nbyte);
     if (ptr == NULL) {
         KBDTOE_ERR("kbdtoe write mempool alloc fail");
-        return -EAGAIN; 
+        errno = EAGAIN;
+        return -1; 
     }
-    memcpy(ptr, buf, nbyte);
+    memcpy_ret = memcpy_s(ptr, nbyte, buf, nbyte); // 应用程序已保证nbyte的合法
+    if (memcpy_ret != EOK) {
+        KBDTOE_ERR("kbdtoe write memcpy_s failed");
+        errno = EAGAIN;
+        return -1;
+    }
     struct knet_tx_req tx_req = {0};
     struct knet_iovec iov[1];
     tx_req.iov = iov;
@@ -40,6 +48,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
 ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
 {
     int ret = 0;
+    int memcpy_ret;
     size_t total_size = 0;
     for (int i = 0; i < iovcnt; i++) {
         total_size += iov[i].iov_len;
@@ -48,11 +57,17 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     ptr = (unsigned char*)dtoe_mempool_alloc(total_size);
     if (ptr == NULL) {
         KBDTOE_ERR("kbdtoe writev mempool alloc fail");
-        return -EAGAIN; 
+        errno = EAGAIN;
+        return -1; 
     }
     size_t offset = 0;
     for (int i = 0; i < iovcnt; ++i) {
-        memcpy(ptr + offset, iov[i].iov_base, iov[i].iov_len);
+        memcpy_ret = memcpy_s(ptr + offset, iov[i].iov_len, iov[i].iov_base, iov[i].iov_len);
+        if (memcpy_ret != EOK) {
+            KBDTOE_ERR("kbdtoe write memcpy_s failed");
+            errno = EAGAIN;
+            return -1;
+        }
         offset += iov[i].iov_len;
     }
     struct knet_tx_req tx_req = {0};

@@ -14,10 +14,12 @@
 #include <stdio.h>
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
+#include "securec.h"
 
 ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
 {
-    int ret = 0; 
+    int ret = 0;
+    int memcpy_ret;
     int iov_cnt = 0;
     struct knet_iovec iovs[DTOE_RECV_MAX_DESC_NUM];
     ssize_t read_length = 0;
@@ -43,12 +45,22 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
 
     if (unlikely(conn->leaked_size > 0)) {
         if (conn->leaked_size > nbyte) {
-            memcpy(buf + read_length, conn->leaked_buff + conn->read_leaked_offset, nbyte);
+            memcpy_ret = memcpy_s(buf + read_length, nbyte, conn->leaked_buff + conn->read_leaked_offset, nbyte);
+            if (memcpy_ret != EOK) {
+               KBDTOE_ERR("kbdtoe read memcpy_s scene1 failed");
+               errno = EAGAIN;
+               return -1;
+            }
             conn->read_leaked_offset += nbyte;
             conn->leaked_size -= nbyte;
             return nbyte;
         } else {
-            memcpy(buf + read_length, conn->leaked_buff + conn->read_leaked_offset, conn->leaked_size);
+            memcpy_ret = memcpy_s(buf + read_length, conn->leaked_size, conn->leaked_buff + conn->read_leaked_offset, conn->leaked_size);
+            if (memcpy_ret != EOK) {
+               KBDTOE_ERR("kbdtoe read memcpy_s scene2 failed");
+               errno = EAGAIN;
+               return -1;
+            }
             nbyte -= conn->leaked_size;
             read_length += conn->leaked_size;
             conn->leaked_size = 0;
@@ -79,7 +91,12 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
         }
 
         if ((read_length + iov.iov_len) <= nbyte) {
-            memcpy(buf + read_length, iov.iov_base, iov.iov_len);
+            memcpy_ret = memcpy_s(buf + read_length, iov.iov_len, iov.iov_base, iov.iov_len);
+            if (memcpy_ret != EOK) {
+               KBDTOE_ERR("kbdtoe read memcpy_s scene3 failed");
+               errno = EAGAIN;
+               return -1;
+            }
             read_length += iov.iov_len;
             (void)__atomic_fetch_sub(&conn->recv_desc_num, 1, __ATOMIC_SEQ_CST);
 
@@ -93,7 +110,12 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
             iov_cnt++;
             conn->recv_desc.data_remain = 0;
         } else {
-            memcpy((buf + read_length), iov.iov_base, (nbyte - read_length));
+            memcpy_ret = memcpy_s((buf + read_length), (nbyte - read_length), iov.iov_base, (nbyte - read_length));
+            if (memcpy_ret != EOK) {
+               KBDTOE_ERR("kbdtoe read memcpy_s scene4 failed");
+               errno = EAGAIN;
+               return -1;
+            }
             if (conn->recv_desc.data_remain == 0) {
                 conn->recv_desc.data_remain = 1;
                 conn->recv_desc.iov_origin.iov_base = iov.iov_base;
