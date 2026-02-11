@@ -40,6 +40,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     tx_req.iov[0].iov_len = nbyte;
     tx_req.lkey = get_dtoe_mr_s()->lkey;
     tx_req.wr_id = (uint64_t)ptr;
+    tx_req.free_cb = dtoe_mempool_free;
     tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req);
    return ret;
@@ -76,6 +77,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     tx_req.iov[0].iov_base = ptr;
     tx_req.iov[0].iov_len = total_size;
     tx_req.lkey = get_dtoe_mr_s()->lkey;
+    tx_req.free_cb = dtoe_mempool_free;
     tx_req.wr_id = (uint64_t)ptr;
     tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req);

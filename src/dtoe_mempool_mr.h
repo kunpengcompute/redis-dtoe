@@ -49,11 +49,11 @@ void* dtoe_mempool_alloc(size_t size);
 /******************************************************************
   Prototype    : dtoe_mempool_free 
   Description  : 将内存归还到内存池
-  Input        : void *ptr: dtoe成功初始化后的设备序列号
+  Input        : uint64_t wid: dtoe成功初始化后的设备序列号
   Output       : None
   Return Value : None
  **************************************************************/
-void dtoe_mempool_free(void *ptr);
+void dtoe_mempool_free(int sockfd, uint64_t wid);
 
 
 /******************************************************************

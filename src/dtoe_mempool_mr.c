@@ -368,8 +368,9 @@ void* dtoe_mempool_alloc(size_t size)
     return (char*)p + sizeof(MpHeader);
 }
 
-void  dtoe_mempool_free(void* ptr)
+void  dtoe_mempool_free(int sockfd, uint64_t w_id)
 {
+    void *ptr = (void*)w_id;
     if (!ptr) {
         return;
     }
