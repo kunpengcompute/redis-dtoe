@@ -203,6 +203,7 @@ int kbdtoe_conn_start_offload(int sockfd)
     libdtoe_conn_s *conn = TAILQ_FIRST(&thread_info->connection.free_conns);
     if (conn == NULL) {
         pthread_spin_unlock(&(thread_info->connection.offload_lock));
+        KBDTOE_ERR("kbdtoe start offload failed for no free conns");
         return DTOE_FAIL;
     }
     TAILQ_REMOVE(&thread_info->connection.free_conns, conn, free_node);
