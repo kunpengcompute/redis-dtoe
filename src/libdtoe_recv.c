@@ -25,6 +25,10 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
     ssize_t read_length = 0;
     struct knet_iovec iov;
     libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(fd);
+    if (conn->offload_status == DTOE_OFFLOAD_START) {
+        errno = EAGAIN;
+        return -1;
+    }
     /** 解决卸载过程中数据丢包问题 */
     ssize_t leaked_size = knet_get_leaked_packet_size(fd);
     if (unlikely(leaked_size > 0)) {
