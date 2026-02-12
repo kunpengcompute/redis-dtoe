@@ -30,6 +30,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     memcpy_ret = memcpy_s(ptr, nbyte, buf, nbyte); // 应用程序已保证nbyte的合法
     if (memcpy_ret != EOK) {
         KBDTOE_ERR("kbdtoe write memcpy_s failed");
+        dtoe_mempool_free(0, (uint64_t)ptr);
         errno = EAGAIN;
         return -1;
     }
@@ -66,6 +67,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         memcpy_ret = memcpy_s(ptr + offset, iov[i].iov_len, iov[i].iov_base, iov[i].iov_len);
         if (memcpy_ret != EOK) {
             KBDTOE_ERR("kbdtoe write memcpy_s failed");
+            dtoe_mempool_free(0, (uint64_t)ptr);
             errno = EAGAIN;
             return -1;
         }

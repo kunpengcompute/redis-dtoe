@@ -98,8 +98,9 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
             memcpy_ret = memcpy_s(buf + read_length, iov.iov_len, iov.iov_base, iov.iov_len);
             if (memcpy_ret != EOK) {
                KBDTOE_ERR("kbdtoe read memcpy_s scene3 failed");
-               errno = EAGAIN;
-               return -1;
+               knet_recv_mem_loopback(iovs, iov_cnt);
+               knet_prepare_close(conn->fd);
+               return 0;
             }
             read_length += iov.iov_len;
             (void)__atomic_fetch_sub(&conn->recv_desc_num, 1, __ATOMIC_SEQ_CST);
@@ -117,8 +118,9 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
             memcpy_ret = memcpy_s((buf + read_length), (nbyte - read_length), iov.iov_base, (nbyte - read_length));
             if (memcpy_ret != EOK) {
                KBDTOE_ERR("kbdtoe read memcpy_s scene4 failed");
-               errno = EAGAIN;
-               return -1;
+               knet_recv_mem_loopback(iovs, iov_cnt);
+               knet_prepare_close(conn->fd);;
+               return 0;
             }
             if (conn->recv_desc.data_remain == 0) {
                 conn->recv_desc.data_remain = 1;

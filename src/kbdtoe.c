@@ -19,6 +19,16 @@
 static uint8_t g_thread_num = 1; // 默认单线程
 static uint8_t g_channel_num = 1; // 默认每个线程1对信道,redis 单实例最大支持1W，单对信道支持8k
 static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
+dtoe_close_done_callback_t g_dtoe_close_done_callback;
+
+void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb)
+{
+    if (cb == NULL) {
+       KBDTOE_ERR("dtoe close done callback is null");
+       return;
+    }
+    g_dtoe_close_done_callback = cb;
+}
 
 inline libdtoe_thread_pool_s* get_thread_pool(int idx)
 {
@@ -32,9 +42,11 @@ inline libdtoe_thread_pool_s* get_thread_pool(int idx)
 /*****************************  callback function start *****************************/
 void libdtoe_close_done(int sockfd)
 {
-    close(sockfd);
-    libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(sockfd);
-    conn->fd = -1;
+    if (g_dtoe_close_done_callback != NULL) {
+        g_dtoe_close_done_callback(sockfd);
+        return;
+    }
+    KBDTOE_ERR("dtoe close done callback need register");
 }
 
 void libdtoe_prepare_close_done(int sockfd)
