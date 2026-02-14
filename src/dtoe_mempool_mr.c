@@ -19,6 +19,7 @@
 #include <malloc.h>
 #include "knet_dtoe_api.h"
 #include "kbdtoe_base.h"
+#include "securec.h"
 
 static const size_t SLAB_OBJ_SIZES[] = {8, 16, 128, 512, 1024};
 #define POOL_SIZE (1ULL * 1024 * 1024 * 1024)
@@ -91,7 +92,7 @@ static int buddy_init()
         KBDTOE_ERR("malloc mempool failed!\n");
         return FAIL;
     }
-    memset(g_memory_pool, 0, mempool_size);
+    (void)memset_s(g_memory_pool, mempool_size, 0, mempool_size);
     g_dmr = knet_reg_mr(g_memory_pool, mempool_size);
     if (g_dmr == NULL) {
         free(g_memory_pool);
@@ -367,8 +368,9 @@ void* dtoe_mempool_alloc(size_t size)
     return (char*)p + sizeof(MpHeader);
 }
 
-void  dtoe_mempool_free(void* ptr)
+void  dtoe_mempool_free(int sockfd, uint64_t w_id)
 {
+    void *ptr = (void*)w_id;
     if (!ptr) {
         return;
     }

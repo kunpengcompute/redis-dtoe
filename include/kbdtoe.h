@@ -107,6 +107,9 @@ bool kbdtoe_is_conn_offload(int sockfd);
   Return Value : None
  **************************************************************/
 void kbdtoe_conn_status_for_close(int sockfd);
+
+typedef void (*dtoe_close_done_callback_t) (int sockfd);
+void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb);
 #ifdef __cplusplus
 }
 #endif

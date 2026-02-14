@@ -14,10 +14,21 @@
 #include "kbdtoe.h"
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
+#include "securec.h"
 
 static uint8_t g_thread_num = 1; // 默认单线程
 static uint8_t g_channel_num = 1; // 默认每个线程1对信道,redis 单实例最大支持1W，单对信道支持8k
 static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
+dtoe_close_done_callback_t g_dtoe_close_done_callback;
+
+void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb)
+{
+    if (cb == NULL) {
+       KBDTOE_ERR("dtoe close done callback is null");
+       return;
+    }
+    g_dtoe_close_done_callback = cb;
+}
 
 inline libdtoe_thread_pool_s* get_thread_pool(int idx)
 {
@@ -31,9 +42,11 @@ inline libdtoe_thread_pool_s* get_thread_pool(int idx)
 /*****************************  callback function start *****************************/
 void libdtoe_close_done(int sockfd)
 {
-    close(sockfd);
-    libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(sockfd);
-    conn->fd = -1;
+    if (g_dtoe_close_done_callback != NULL) {
+        g_dtoe_close_done_callback(sockfd);
+        return;
+    }
+    KBDTOE_ERR("dtoe close done callback need register");
 }
 
 void libdtoe_prepare_close_done(int sockfd)
@@ -80,7 +93,7 @@ static int libdtoe_init_conn_pool_per_thread()
         if (!g_thread_pool[i].connection.conn_pool) {
             return DTOE_FAIL;
         }
-        memset((void*)g_thread_pool[i].connection.conn_pool, 0, conn_num * sizeof(libdtoe_conn_s));
+        (void)memset_s((void*)g_thread_pool[i].connection.conn_pool, conn_num * sizeof(libdtoe_conn_s), 0, conn_num * sizeof(libdtoe_conn_s));
     }
     libdtoe_conn_s *conn = NULL;
     for (int i = 0; i < g_thread_num; ++i) {
@@ -115,7 +128,7 @@ static int libdtoe_prepare_mbuf(libdtoe_thread_pool_s *thread_info)
     if (buf == NULL) {
         return DTOE_FAIL;
     }
-    memset(buf, 0, buf_size);
+    (void)memset_s(buf, buf_size, 0, buf_size);
     thread_info->send_mr = knet_reg_mr(buf, buf_size);
     if (thread_info->send_mr == NULL) {
         free(buf);
@@ -202,6 +215,7 @@ int kbdtoe_conn_start_offload(int sockfd)
     libdtoe_conn_s *conn = TAILQ_FIRST(&thread_info->connection.free_conns);
     if (conn == NULL) {
         pthread_spin_unlock(&(thread_info->connection.offload_lock));
+        KBDTOE_ERR("kbdtoe start offload failed for no free conns");
         return DTOE_FAIL;
     }
     TAILQ_REMOVE(&thread_info->connection.free_conns, conn, free_node);

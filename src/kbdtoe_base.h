@@ -56,7 +56,7 @@
 #define DTOE_PENDING_REQ_MAX_NUM      (20480U + 4096U)
 #define DTOE_CORE_NUM                 (16)
 #define DTOE_ASYNC_OFFLOAD_MAX_NUM    (1024)
-#define DTOE_MAX_CONN_PER_THREAD      1000
+#define DTOE_MAX_CONN_PER_THREAD      10000 // redis单个实例
 #define DTOE_CONN_PER_CHNL             (1024)
 #define DTOE_RECV_MAX_DESC_NUM         (DTOE_RECV_POLL_CNT)
 #define DTOE_UNUSED(a)           ((a)=(a))
