@@ -25,6 +25,8 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
     ssize_t read_length = 0;
     struct knet_iovec iov;
     libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(fd);
+    libdtoe_recv_desc_s *recv_desc = NULL;
+    recv_desc = &conn->recv_desc;
     if (conn->offload_status == DTOE_OFFLOAD_START) {
         errno = EAGAIN;
         return -1;
@@ -48,33 +50,27 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
     }
 
     if (unlikely(conn->leaked_size > 0)) {
-        if (conn->leaked_size > nbyte) {
-            memcpy_ret = memcpy_s(buf + read_length, nbyte, conn->leaked_buff + conn->read_leaked_offset, nbyte);
-            if (memcpy_ret != EOK) {
-               KBDTOE_ERR("kbdtoe read memcpy_s scene1 failed");
-               errno = EAGAIN;
-               return -1;
-            }
-            conn->read_leaked_offset += nbyte;
-            conn->leaked_size -= nbyte;
-            return nbyte;
-        } else {
-            memcpy_ret = memcpy_s(buf + read_length, conn->leaked_size, conn->leaked_buff + conn->read_leaked_offset, conn->leaked_size);
-            if (memcpy_ret != EOK) {
-               KBDTOE_ERR("kbdtoe read memcpy_s scene2 failed");
-               errno = EAGAIN;
-               return -1;
-            }
-            nbyte -= conn->leaked_size;
-            read_length += conn->leaked_size;
-            conn->leaked_size = 0;
+        size_t leaked_copy_len = (conn->leaked_size > nbyte) ? nbyte : (size_t)conn->leaked_size;
+        memcpy_ret = memcpy_s(buf, leaked_copy_len, (char *)conn->leaked_buff + conn->read_leaked_offset, leaked_copy_len);
+        if (memcpy_ret != EOK) {
+           KBDTOE_ERR("kbdtoe read leaked memcpy_s failed");
+           errno = EAGAIN;
+           return -1;
+        }
+        conn->read_leaked_offset += leaked_copy_len;
+        conn->leaked_size -= leaked_copy_len;
+        read_length += leaked_copy_len;
+        if (conn->leaked_size == 0) {
             free(conn->leaked_buff);
             conn->leaked_buff = NULL;
+        }
+        if (read_length == nbyte) {
+            return read_length;
         }
     }
 
     while (__atomic_load_n(&conn->recv_desc_num, __ATOMIC_RELAXED) && (read_length < nbyte) && (iov_cnt < DTOE_RECV_MAX_DESC_NUM)) {
-        if (conn->recv_desc.data_remain == 0) {
+        if (recv_desc->data_remain == 0) {
             ret = knet_recv(conn->fd, &iov, 1);
             if (ret < 0) {
                 knet_recv_mem_loopback(iovs, iov_cnt);
@@ -91,7 +87,7 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
                 return 0;
             }
         } else {
-            iov = conn->recv_desc.iov;
+            iov = recv_desc->iov;
         }
 
         if ((read_length + iov.iov_len) <= nbyte) {
@@ -103,9 +99,9 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
                return 0;
             }
             read_length += iov.iov_len;
-            (void)__atomic_fetch_sub(&conn->recv_desc_num, 1, __ATOMIC_SEQ_CST);
+            (void)__atomic_fetch_sub(&conn->recv_desc_num, 1, __ATOMIC_RELAXED);
 
-            if (conn->recv_desc.data_remain != 0) {
+            if (recv_desc->data_remain != 0) {
                 iovs[iov_cnt].iov_base = conn->recv_desc.iov_origin.iov_base;
                 iovs[iov_cnt].iov_len = conn->recv_desc.iov_origin.iov_len;
             } else {
@@ -113,23 +109,24 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
                 iovs[iov_cnt].iov_len = iov.iov_len;
             }
             iov_cnt++;
-            conn->recv_desc.data_remain = 0;
+            recv_desc->data_remain = 0;
         } else {
-            memcpy_ret = memcpy_s((buf + read_length), (nbyte - read_length), iov.iov_base, (nbyte - read_length));
+            size_t remain_len = nbyte - read_length;
+            memcpy_ret = memcpy_s((buf + read_length), remain_len, iov.iov_base, remain_len);
             if (memcpy_ret != EOK) {
                KBDTOE_ERR("kbdtoe read memcpy_s scene4 failed");
                knet_recv_mem_loopback(iovs, iov_cnt);
                knet_prepare_close(conn->fd);;
                return 0;
             }
-            if (conn->recv_desc.data_remain == 0) {
-                conn->recv_desc.data_remain = 1;
-                conn->recv_desc.iov_origin.iov_base = iov.iov_base;
-                conn->recv_desc.iov_origin.iov_len = iov.iov_len;
+            if (recv_desc->data_remain == 0) {
+                recv_desc->data_remain = 1;
+                recv_desc->iov_origin.iov_base = iov.iov_base;
+                recv_desc->iov_origin.iov_len = iov.iov_len;
             }
-            iov.iov_base += (nbyte - read_length);
-            iov.iov_len -= (nbyte - read_length);
-            conn->recv_desc.iov = iov;
+            iov.iov_base += remain_len;
+            iov.iov_len -= remain_len;
+            recv_desc->iov = iov;
             read_length = nbyte;
         }
     }
