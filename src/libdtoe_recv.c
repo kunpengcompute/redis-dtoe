@@ -16,6 +16,8 @@
 #include "dtoe_mempool_mr.h"
 #include "securec.h"
 
+extern struct libdtoe_conn_readable_event_head g_readable_event_head;
+
 ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
 {
     int ret = 0;
@@ -63,10 +65,24 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
         if (conn->leaked_size == 0) {
             free(conn->leaked_buff);
             conn->leaked_buff = NULL;
+            if (conn->has_readable_event) {
+                TAILQ_REMOVE(&g_readable_event_head, conn, readable_event_node);
+                conn->has_readable_event = 0;
+            }
         }
         if (read_length == nbyte) {
+            if (conn->leaked_size > 0) {
+                conn->has_readable_event = 1;
+            }
+            if (conn->has_readable_event) {
+                TAILQ_INSERT_TAIL(&g_readable_event_head, conn, readable_event_node);
+            }
             return read_length;
         }
+    }
+    if (conn->has_readable_event) {
+        TAILQ_REMOVE(&g_readable_event_head, conn, readable_event_node);
+        conn->has_readable_event = 0;
     }
 
     while (__atomic_load_n(&conn->recv_desc_num, __ATOMIC_RELAXED) && (read_length < nbyte) && (iov_cnt < DTOE_RECV_MAX_DESC_NUM)) {
@@ -132,6 +148,10 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
     }
     if (iov_cnt) {
         knet_recv_mem_loopback(iovs, iov_cnt);
+    }
+    if (__atomic_load_n(&conn->recv_desc_num, __ATOMIC_RELAXED)) {
+        TAILQ_INSERT_TAIL(&g_readable_event_head, conn, readable_event_node);
+        conn->has_readable_event = 1;
     }
     return read_length;
 }

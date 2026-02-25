@@ -62,6 +62,7 @@
 #define DTOE_UNUSED(a)           ((a)=(a))
 
 TAILQ_HEAD(libdtoe_conn_head, libdtoe_conn);
+TAILQ_HEAD(libdtoe_conn_readable_event_head, libdtoe_conn);
 typedef enum {
     DTOE_OFFLOAD_WAIT = 0,
     DTOE_OFFLOAD_START,
@@ -142,27 +143,23 @@ typedef struct libdtoe_conn {
     libdtoe_conn_status_e conn_status;
     uint32_t recv_status;
     char *send_buf;
-    char *long_buf;
     uint16_t recv_desc_num;
-    uint16_t pad;
-    int recv_len;
     struct knet_send_channel *send_channel;
     struct knet_recv_channel *recv_channel;
     libdtoe_req_node_s req;
     libdtoe_recv_desc_s recv_desc;
     void (*process_cb) (void *, int);
-    int data_recv;
-    int data_batch;
-    uint64_t io_cnt;
     libdtoe_recv_hdr_s recv_hdr;
     void* thread_pool_ptr;
     uint32_t offload_status;
     TAILQ_ENTRY(libdtoe_conn) free_node;
     int fd;
-    int mask;
     ssize_t leaked_size;
     ssize_t read_leaked_offset;
     void* leaked_buff;
+    int has_readable_event;
+    int poll_mask;
+    TAILQ_ENTRY(libdtoe_conn) readable_event_node;
 } libdtoe_conn_s;
 
 typedef struct libdtoe_conn_pool {
