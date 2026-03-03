@@ -43,7 +43,11 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     tx_req.wr_id = (uint64_t)ptr;
     tx_req.free_cb = dtoe_mempool_free;
     tx_req.iov_cnt = 1;
-    ret = knet_send(fd, &tx_req);
+    ret = knet_send(fd, &tx_req); // knet_send 异常时返回异常码
+    if (ret < 0) {
+        errno = -ret;
+        ret = -1;
+    }
    return ret;
 }
 
@@ -82,6 +86,10 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     tx_req.free_cb = dtoe_mempool_free;
     tx_req.wr_id = (uint64_t)ptr;
     tx_req.iov_cnt = 1;
-    ret = knet_send(fd, &tx_req);
+    ret = knet_send(fd, &tx_req); // knet_send 异常时返回异常码
+    if (ret < 0) {
+        errno = -ret;
+        ret = -1;
+    }
     return ret;
 }

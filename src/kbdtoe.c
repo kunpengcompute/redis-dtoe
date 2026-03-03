@@ -20,6 +20,7 @@ static uint8_t g_thread_num = 1; // 默认单线程
 static uint8_t g_channel_num = 1; // 默认每个线程1对信道,redis 单实例最大支持1W，单对信道支持8k
 static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
 dtoe_close_done_callback_t g_dtoe_close_done_callback;
+struct libdtoe_conn_readable_event_head g_readable_event_head;
 
 void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb)
 {
@@ -55,8 +56,12 @@ void libdtoe_prepare_close_done(int sockfd)
     conn->conn_status = DTOE_CONN_CLOSED;
     libdtoe_thread_pool_s *thread_info = (libdtoe_thread_pool_s *)conn->thread_pool_ptr;
     thread_info->connection.offload_num--;
+    if (conn->has_readable_event) {
+        TAILQ_REMOVE(&g_readable_event_head, conn, readable_event_node);
+        conn->has_readable_event = 0;
+    }
     pthread_spin_lock(&(thread_info->connection.offload_lock));
-    TAILQ_INSERT_TAIL(&thread_info->connection.free_conns,conn, free_node);
+    TAILQ_INSERT_TAIL(&thread_info->connection.free_conns, conn, free_node);
     pthread_spin_unlock(&(thread_info->connection.offload_lock));
     knet_close(sockfd);
 }
@@ -185,6 +190,7 @@ int kbdtoe_init(const char* dtoe_ip)
         KBDTOE_ERR("kbdtoe init conn pool failed");
         return DTOE_FAIL;
     }
+    TAILQ_INIT(&g_readable_event_head);
     ret = libdtoe_all_threads_create_channel();
     if (ret != DTOE_SUCCESS) {
         KBDTOE_ERR("kbdtoe init thread channel failed");
@@ -204,6 +210,7 @@ int libdtoe_conn_init(libdtoe_thread_pool_s *thread_info, libdtoe_conn_s* libdto
     libdtoe_conn->recv_status = DTOE_RECV_PREPARE;
     libdtoe_conn->recv_desc_num = 0;
     libdtoe_conn->thread_pool_ptr = (void*) thread_info;
+    libdtoe_conn->poll_mask = 0;
     return DTOE_SUCCESS;
 }
 
@@ -238,6 +245,7 @@ int kbdtoe_conn_start_offload(int sockfd)
     conn->recv_channel = in.recv_channel;
     conn->leaked_size = 0;
     conn->read_leaked_offset = 0;
+    conn->has_readable_event = 0;
     return DTOE_SUCCESS;
 }
 

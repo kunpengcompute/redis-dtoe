@@ -15,6 +15,8 @@
 #include "kbdtoe.h"
 #include "dtoe_mempool_mr.h"
 
+extern struct libdtoe_conn_readable_event_head g_readable_event_head;
+
 void kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], int *nr_recv_event)
 {
     libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
@@ -26,6 +28,18 @@ void kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], i
     *nr_recv_event = knet_poll_recv_channel(thread_pool->recv_channel[0], recv_events, DTOE_RECV_MAX_DESC_NUM);
     for (int i = 0; i < *nr_recv_event; ++i) {
         libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(recv_events[i].sockfd);
-        __atomic_add_fetch(&conn->recv_desc_num, recv_events[i].iov_cnt, __ATOMIC_SEQ_CST);
+        __atomic_add_fetch(&conn->recv_desc_num, recv_events[i].iov_cnt, __ATOMIC_RELAXED);
+        conn->poll_mask = 1;
+    }
+
+    libdtoe_conn_s *node = NULL;
+    TAILQ_FOREACH(node, &g_readable_event_head, readable_event_node) {
+        if (node->poll_mask) {
+            node->poll_mask = 0;
+            continue;
+        }
+        recv_events[*nr_recv_event].sockfd = node->fd;
+        node->poll_mask = 0;
+        (*nr_recv_event)++;
     }
 }
