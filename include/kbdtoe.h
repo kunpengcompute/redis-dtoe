@@ -27,9 +27,10 @@ extern "C" {
   Prototype    : kbdtoe_init
   Description  : dtoe 初始化函数
   Input        : const char* dtoe_ip  dtoe网卡
+               : unsigned int max_conn_num 最大连接数
   Return Value : 0 success， others-failed
  **************************************************************/
-int kbdtoe_init(const char* dtoe_ip);
+int kbdtoe_init(const char* dtoe_ip, unsigned int max_conn_num);
 
 /******************************************************************
   Prototype    : kbdtoe_uninit 
