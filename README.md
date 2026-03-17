@@ -32,8 +32,8 @@ redis-dtoe/
 ├── docs/
 │   ├── LICENSE                             # 文档许可证
 │   └── zh/
-│       ├── Redis-DTOE-Optimization-Feature-Guide.md
-│       ├── Redis-DTOE-Optimization-Release-Notes.md
+│       ├── redis-dtoe-optimization-feature-guide.md
+│       ├── redis-dtoe-optimization-release-notes.md
 │       ├── figures/
 │       └── public_sys-resources/
 └── README.md
@@ -43,7 +43,7 @@ redis-dtoe/
 
 | 特性 | Link | 简介 |
 |--|--|--|
-| Redis DTOE优化特性指南 | [docs/zh/Redis-DTOE-Optimization-Feature-Guide.md](docs/zh/Redis-DTOE-Optimization-Feature-Guide.md) | 包含环境要求、安装部署、使能与验证步骤 |
+| Redis DTOE优化特性指南 | [docs/zh/redis-dtoe-optimization-feature-guide.md](docs/zh/redis-dtoe-optimization-feature-guide.md) | 包含环境要求、安装部署、使能与验证步骤 |
 
 ### 特性简介
 
@@ -52,7 +52,7 @@ Redis DTOE优化通过将 TCP/IP 数据通路从主机协议栈下沉到网卡 T
 
 ### 版本说明
 
-Redis DTOE优化版本、配套关系与变更记录见：[版本说明书](docs/zh/Redis-DTOE-Optimization-Release-Notes.md)。
+Redis DTOE优化版本、配套关系与变更记录见：[版本说明书](docs/zh/redis-dtoe-optimization-release-notes.md)。
 
 ### 快速入门
 
@@ -74,8 +74,8 @@ cmake --install .
 
 | 学习资源类别 | 学习资源名称 | 学习资源简介 |
 |--|--|--|
-| 文档 | [Redis DTOE优化特性指南](docs/zh/Redis-DTOE-Optimization-Feature-Guide.md) | 提供 DTOE 场景下环境、部署、使能、验证与加固指导 |
-| 文档 | [Redis DTOE优化版本说明书](docs/zh/Redis-DTOE-Optimization-Release-Notes.md) | 提供版本配套信息与版本变更说明 |
+| 文档 | [Redis DTOE优化特性指南](docs/zh/redis-dtoe-optimization-feature-guide.md) | 提供 DTOE 场景下环境、部署、使能、验证与加固指导 |
+| 文档 | [Redis DTOE优化版本说明书](docs/zh/redis-dtoe-optimization-release-notes.md) | 提供版本配套信息与版本变更说明 |
 | 代码接口 | [kbdtoe.h](include/kbdtoe.h) | 提供 Redis 侧集成所需接口声明 |
 
 ## 兼容性信息
