@@ -297,7 +297,7 @@ sudo systemctl stop firewalld
     cmake --install .
     ```
 
-    命令**cmake --install .** 默认会将kbdtoe.h和kbdtoe.so文件分别安装到/usr/include/和/usr/lib64。
+    命令**cmake --install .** 默认会将kbdtoe.h和libkbdtoe.so文件分别安装到/usr/include/和/usr/lib64。
 
 3. 将Redis中的**redis-7.0.15-adapt-dtoe.patch** 移到Redis源码目录下，执行合入patch的命令。
 
