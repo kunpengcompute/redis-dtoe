@@ -21,6 +21,7 @@ static uint8_t g_channel_num = 1; // 默认每个线程1对信道,redis 单实�
 static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
 dtoe_close_done_callback_t g_dtoe_close_done_callback;
 struct libdtoe_conn_readable_event_head g_readable_event_head;
+static unsigned int g_max_conn_num = 0;
 
 void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb)
 {
@@ -92,7 +93,7 @@ struct knet_ulp_ops g_dtoe_ulp_ops = {
 
 static int libdtoe_init_conn_pool_per_thread()
 {
-    int conn_num = DTOE_MAX_CONN_PER_THREAD;
+    int conn_num = g_max_conn_num;
     for (int i = 0; i < g_thread_num; i++) {
         g_thread_pool[i].connection.conn_pool = (libdtoe_conn_s*)malloc(conn_num * sizeof(libdtoe_conn_s));
         if (!g_thread_pool[i].connection.conn_pool) {
@@ -176,9 +177,10 @@ static int libdtoe_all_threads_create_channel()
     return DTOE_FAIL;
 }
 
-int kbdtoe_init(const char* dtoe_ip)
+int kbdtoe_init(const char* dtoe_ip, unsigned int max_conn_num)
 {
     int ret = 0;
+    g_max_conn_num = max_conn_num;
     knet_ulp_ops_register(&g_dtoe_ulp_ops);
     ret = knet_init(dtoe_ip);
     if (ret != 0) {

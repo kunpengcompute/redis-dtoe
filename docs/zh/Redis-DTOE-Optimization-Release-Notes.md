@@ -71,14 +71,14 @@
 
 |文档名称|内容简介|交付形式|
 |--|--|--|
-|《Kunpeng BoostKit 26.0.T7 Redis DTOE优化 版本说明书》|本文档提供Redis DTOE优化的版本发布及其配套信息。|[开源仓](https://gitcode.com/boostkit/redis-dtoe/master/docs/zh)|
-|《Kunpeng BoostKit 26.0.T7 Redis DTOE优化 特性指南》|本文档提供Redis DTOE优化特性的环境要求、特性使能指导。|[开源仓](https://gitcode.com/boostkit/redis-dtoe/master/docs/zh)|
+|《Kunpeng BoostKit 26.0.T7 Redis DTOE优化 版本说明书》|本文档提供Redis DTOE优化的版本发布及其配套信息。|[开源仓](https://gitcode.com/boostkit/redis-dtoe/tree/master/docs/zh)|
+|《Kunpeng BoostKit 26.0.T7 Redis DTOE优化 特性指南》|本文档提供Redis DTOE优化特性的环境要求、特性使能指导。|[开源仓](https://gitcode.com/boostkit/redis-dtoe/tree/master/docs/zh)|
 
 
 
 ### 获取文档的方法<a name="ZH-CN_TOPIC_0000002550097209"></a>
 
-您可以通过访问[开源仓](https://gitcode.com/boostkit/redis-dtoe/master/docs/zh)浏览和获取相关文档。
+您可以通过访问[开源仓](https://gitcode.com/boostkit/redis-dtoe/tree/master/docs/zh)浏览和获取相关文档。
 
 
 
