@@ -21,7 +21,6 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include <sys/uio.h>
-#include "knet_dtoe_api.h"
 
 /******************************************************************
   Prototype    : kbdtoe_init
@@ -47,15 +46,31 @@ void kbdtoe_uninit();
  **************************************************************/
 int kbdtoe_conn_start_offload(int sockfd);
 
+typedef struct flexda_dtoe_iovec {
+    void* iov_base;
+    size_t iov_len;
+} flexda_dtoe_iovec_s;
+
+enum kbdtoe_recv_event_type {
+    KBDTOE_RX_EVENT_NORMAL,
+    KBDTOE_RX_EVENT_LEAK,
+};
+
+struct kbdtoe_recv_events {
+    int sockfd;
+    uint32_t iov_cnt;
+    enum kbdtoe_recv_event_type type;
+};
+
 /******************************************************************
   Prototype    : kbdtoe_thread_poll 
   Description  : 指定线程的轮询事件函数
   Intput       : int thread_index  线程的index
-  Output       ：1) struct knet_recv_events recv_events[] 线程可读的事件信息
+  Output       ：1) struct kbdtoe_recv_events recv_events[] 线程可读的事件信息
                  2) int *nr_recv_event  线程可读的事事件个数
   Return Value : None
  **************************************************************/
-void kbdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
+void kbdtoe_thread_poll(int thread_index, struct kbdtoe_recv_events recv_events[], int *nr_recv_event);
 
 /******************************************************************
   Prototype    : kbdtoe_read 

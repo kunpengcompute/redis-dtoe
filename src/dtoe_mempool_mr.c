@@ -17,7 +17,6 @@
 #include <string.h>
 #include <pthread.h>
 #include <malloc.h>
-#include "knet_dtoe_api.h"
 #include "kbdtoe_base.h"
 #include "securec.h"
 
@@ -64,7 +63,8 @@ static SlabCache g_slab_caches[NUM_SLAB_CACHES];
 static pthread_mutex_t g_buddy_lock;
 static size_t g_buddy_total_alloc = 0;
 static size_t g_buddy_peak_alloc = 0;
-struct knet_mr *g_dmr;
+static flexda_dtoe_mr_s *g_dmr;
+static uint64_t g_dev_sn = 0;
 
 static int size_to_level(size_t size)
 {
@@ -93,15 +93,24 @@ static int buddy_init()
         return FAIL;
     }
     (void)memset_s(g_memory_pool, mempool_size, 0, mempool_size);
-    g_dmr = knet_reg_mr(g_memory_pool, mempool_size);
+    g_dmr = (flexda_dtoe_mr_s*)malloc(sizeof(flexda_dtoe_mr_s));
     if (g_dmr == NULL) {
         free(g_memory_pool);
         return FAIL;
     }
+    int reg_ret = flexda_dtoe_reg_mr(g_dev_sn, g_memory_pool, mempool_size, g_dmr);
+    if (reg_ret != 0) {
+        free(g_memory_pool);
+        free(g_dmr);
+        g_dmr = NULL;
+        return FAIL;
+    }
     ret = pthread_mutex_init(&g_buddy_lock, NULL);
     if (ret != 0) {
+        flexda_dtoe_unreg_mr(g_dev_sn, g_dmr);
         free(g_memory_pool);
-        knet_unreg_mr(g_dmr);
+        free(g_dmr);
+        g_dmr = NULL;
         return FAIL;
     }
     for (int i = 0; i < MAX_LEVEL; i++) {
@@ -342,7 +351,7 @@ int  dtoe_mempool_init()
     return SUCCESS;
 }
 
-struct knet_mr *get_dtoe_mr_s()
+flexda_dtoe_mr_s *get_dtoe_mr_s()
 {
     return g_dmr;
 }
@@ -429,5 +438,9 @@ void dtoe_mempool_destroy()
     pthread_mutex_destroy(&g_buddy_lock);
     free(g_memory_pool);
     g_memory_pool = NULL;
-    knet_unreg_mr(g_dmr);
+    if (g_dmr != NULL) {
+        flexda_dtoe_unreg_mr(g_dev_sn, g_dmr);
+        free(g_dmr);
+        g_dmr = NULL;
+    }
 }

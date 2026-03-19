@@ -27,27 +27,58 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
         errno = EAGAIN;
         return -1; 
     }
-    memcpy_ret = memcpy_s(ptr, nbyte, buf, nbyte); // 应用程序已保证nbyte的合法
+    memcpy_ret = memcpy_s(ptr, nbyte, buf, nbyte);
     if (memcpy_ret != EOK) {
         KBDTOE_ERR("kbdtoe write memcpy_s failed");
         dtoe_mempool_free(0, (uint64_t)ptr);
         errno = EAGAIN;
         return -1;
     }
-    struct knet_tx_req tx_req = {0};
-    struct knet_iovec iov[1];
-    tx_req.iov = iov;
-    tx_req.iov[0].iov_base = ptr;
-    tx_req.iov[0].iov_len = nbyte;
-    tx_req.lkey = get_dtoe_mr_s()->lkey;
-    tx_req.wr_id = (uint64_t)ptr;
-    tx_req.free_cb = dtoe_mempool_free;
-    tx_req.iov_cnt = 1;
-    ret = knet_send(fd, &tx_req); // knet_send 异常时返回异常码
-    if (ret < 0) {
-        errno = -ret;
-        ret = -1;
+    struct iovec iov[1];
+    iov[0].iov_base = ptr;
+    iov[0].iov_len = nbyte;
+
+    libdtoe_conn_s *conn = (libdtoe_conn_s *)get_conn_by_fd(fd);
+    if (conn == NULL) {
+        KBDTOE_ERR("kbdtoe write, conn is null for fd %d", fd);
+        dtoe_mempool_free(0, (uint64_t)ptr);
+        errno = EAGAIN;
+        return -1;
     }
+
+    flexda_dtoe_mr_s *mr = get_dtoe_mr_s();
+    flexda_dtoe_tx_info_s info = {
+        .tx_in.op_code = 0,
+        .tx_in.lkey = mr ? mr->lkey : 0,
+    };
+    ret = flexda_dtoe_send(conn->dtoe_conn, iov, 1, &info);
+    if (ret < 0) {
+        dtoe_mempool_free(0, (uint64_t)ptr);
+        errno = -ret;
+        return -1;
+    }
+
+    pthread_spin_lock(&conn->send.pending_send_lock);
+    libdtoe_pending_send_s *pending = TAILQ_FIRST(&conn->send.free_req);
+    if (pending != NULL) {
+        TAILQ_REMOVE(&conn->send.free_req, pending, node);
+    }
+    pthread_spin_unlock(&conn->send.pending_send_lock);
+
+    if (pending == NULL) {
+        pending = (libdtoe_pending_send_s*)malloc(sizeof(libdtoe_pending_send_s));
+    }
+
+    if (pending != NULL) {
+        pending->free_cb = dtoe_mempool_free;
+        pending->wr_id = (uint64_t)ptr;
+        pending->sockfd = fd;
+        pending->send_sn = info.tx_out.curr_msn;
+        pthread_spin_lock(&conn->send.pending_send_lock);
+        TAILQ_INSERT_TAIL(&conn->send.unack_req, pending, node);
+        pthread_spin_unlock(&conn->send.pending_send_lock);
+    }
+
    return ret;
 }
 
@@ -77,19 +108,52 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         }
         offset += iov[i].iov_len;
     }
-    struct knet_tx_req tx_req = {0};
-    struct knet_iovec dtoe_iov[1];
-    tx_req.iov = dtoe_iov;
-    tx_req.iov[0].iov_base = ptr;
-    tx_req.iov[0].iov_len = total_size;
-    tx_req.lkey = get_dtoe_mr_s()->lkey;
-    tx_req.free_cb = dtoe_mempool_free;
-    tx_req.wr_id = (uint64_t)ptr;
-    tx_req.iov_cnt = 1;
-    ret = knet_send(fd, &tx_req); // knet_send 异常时返回异常码
-    if (ret < 0) {
-        errno = -ret;
-        ret = -1;
+
+    struct iovec dtoe_iov[1];
+    dtoe_iov[0].iov_base = ptr;
+    dtoe_iov[0].iov_len = total_size;
+
+    libdtoe_conn_s *conn = (libdtoe_conn_s *)get_conn_by_fd(fd);
+    if (conn == NULL) {
+        KBDTOE_ERR("kbdtoe writev, conn is null for fd %d", fd);
+        dtoe_mempool_free(0, (uint64_t)ptr);
+        errno = EAGAIN;
+        return -1;
     }
+
+    flexda_dtoe_mr_s *mr = get_dtoe_mr_s();
+    flexda_dtoe_tx_info_s info = {
+        .tx_in.op_code = 0,
+        .tx_in.lkey = mr ? mr->lkey : 0
+    };
+    ret = flexda_dtoe_send(conn->dtoe_conn, dtoe_iov, 1, &info);
+    if (ret < 0) {
+        dtoe_mempool_free(0, (uint64_t)ptr);
+        errno = -ret;
+        return -1;
+    }
+
+    pthread_spin_lock(&conn->send.pending_send_lock);
+    libdtoe_pending_send_s *pending = TAILQ_FIRST(&conn->send.free_req);
+    if (pending != NULL) {
+        TAILQ_REMOVE(&conn->send.free_req, pending, node);
+    }
+    pthread_spin_unlock(&conn->send.pending_send_lock);
+
+    if (pending == NULL) {
+        pending = (libdtoe_pending_send_s*)malloc(sizeof(libdtoe_pending_send_s));
+    }
+
+    if (pending != NULL) {
+        pending->free_cb = dtoe_mempool_free;
+        pending->wr_id = (uint64_t)ptr;
+        pending->sockfd = fd;
+        pending->send_sn = info.tx_out.curr_msn;
+        conn->send.last_send_sn = info.tx_out.curr_msn;
+        pthread_spin_lock(&conn->send.pending_send_lock);
+        TAILQ_INSERT_TAIL(&conn->send.unack_req, pending, node);
+        pthread_spin_unlock(&conn->send.pending_send_lock);
+    }
+
     return ret;
 }

@@ -19,7 +19,7 @@ extern "C" {
 #include <inttypes.h>
 #include <stdint.h>
 #include <stddef.h>
-#include "knet_dtoe_api.h"
+#include "kbdtoe_base.h"
 
 /******************************************************************
   Prototype    : dtoe_mempool_init 
@@ -61,9 +61,9 @@ void dtoe_mempool_free(int sockfd, uint64_t wid);
   Description  : 注册成功后放回的MR信息，发生数据时需要用到,可选
   Input        : None
   Output       : None
-  Return Value : struct knet_mr:注册成功后放回的MR信息
+  Return Value : struct flexda_dtoe_mr:注册成功后放回的MR信息
  **************************************************************/
-struct knet_mr *get_dtoe_mr_s();
+flexda_dtoe_mr_s *get_dtoe_mr_s();
 
 /******************************************************************
   Prototype    : dtoe_mp_stats
