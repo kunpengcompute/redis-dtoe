@@ -24,13 +24,47 @@
 #include <stdlib.h>
 #include <sys/uio.h>
 #include <syslog.h>
-#include "knet_dtoe_api.h"
+#include <stdarg.h>
+#include <stdio.h>
+#include <stdbool.h>
+#include "flexda_dtoe_interface.h"
+#include "kbdtoe.h"
 
-/** 日志接口必须在knet_init之后才可以调用 */
-#define KBDTOE_ERR(fmt, args...) knet_log(__func__, __LINE__, LOG_ERR, "[ERR] " fmt, ##args)
-#define KBDTOE_WARN(fmt, args...) knet_log(__func__, __LINE__, LOG_WARNING, "[WARN] " fmt, ##args)
-#define KBDTOE_INFO(fmt, args...) knet_log(__func__, __LINE__, LOG_INFO, "[INFO] " fmt, ##args)
-#define KBDTOE_DEBUG(fmt, args...) knet_log(__func__, __LINE__, LOG_DEBUG, "[DEBUG] " fmt, ##args)
+extern int g_kbdtoe_log_lvl;
+static inline void kbdtoe_log(const char *function, int line, int level, const char *format, ...)
+{
+    char buffer[1024];
+    va_list args;
+
+    if (level > g_kbdtoe_log_lvl)
+        return;
+
+    va_start(args, format);
+    vsnprintf(buffer, sizeof(buffer), format, args);
+    va_end(args);
+
+    switch (level) {
+        case LOG_ERR:
+            fprintf(stderr, "[ERR] %s:%d - %s\n", function, line, buffer);
+            break;
+        case LOG_WARNING:
+            fprintf(stderr, "[WARN] %s:%d - %s\n", function, line, buffer);
+            break;
+        case LOG_INFO:
+            fprintf(stdout, "[INFO] %s:%d - %s\n", function, line, buffer);
+            break;
+        case LOG_DEBUG:
+            fprintf(stdout, "[DEBUG] %s:%d - %s\n", function, line, buffer);
+            break;
+        default:
+            break;
+    }
+}
+
+#define KBDTOE_ERR(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_ERR, fmt, ##args)
+#define KBDTOE_WARN(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_WARNING, fmt, ##args)
+#define KBDTOE_INFO(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_INFO, fmt, ##args)
+#define KBDTOE_DEBUG(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_DEBUG, fmt, ##args)
 #define likely(x) __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
@@ -133,10 +167,20 @@ typedef struct libdtoe_req_node {
 TAILQ_HEAD(libdtoe_tx_desc_head, libdtoe_tx_desc_node);
 
 typedef struct libdtoe_recv_desc {
-    struct knet_iovec iov;
+    flexda_dtoe_iovec_s iov;
     int data_remain;
-    struct knet_iovec  iov_origin;
+    flexda_dtoe_iovec_s iov_origin;
 }libdtoe_recv_desc_s;
+
+typedef void (*kbdtoe_tx_req_free_cb_t)(int sockfd, uint64_t wr_id);
+typedef struct libdtoe_pending_send {
+    TAILQ_ENTRY(libdtoe_pending_send) node;
+    kbdtoe_tx_req_free_cb_t free_cb;
+    uint64_t wr_id;
+    int sockfd;
+    uint16_t send_sn;
+} __attribute__((packed)) libdtoe_pending_send_s;
+TAILQ_HEAD(libdtoe_pending_send_head, libdtoe_pending_send);
 
 typedef struct libdtoe_conn {
     void* node;
@@ -144,8 +188,8 @@ typedef struct libdtoe_conn {
     uint32_t recv_status;
     char *send_buf;
     uint16_t recv_desc_num;
-    struct knet_send_channel *send_channel;
-    struct knet_recv_channel *recv_channel;
+    flexda_send_channel_s *send_channel;
+    flexda_recv_channel_s *recv_channel;
     libdtoe_req_node_s req;
     libdtoe_recv_desc_s recv_desc;
     void (*process_cb) (void *, int);
@@ -154,9 +198,21 @@ typedef struct libdtoe_conn {
     uint32_t offload_status;
     TAILQ_ENTRY(libdtoe_conn) free_node;
     int fd;
+    void *dtoe_conn;
+    struct {
+        uint32_t last_send_sn;
+        uint32_t comp_sn;
+        uint32_t last_ack_sn;
+        struct libdtoe_pending_send_head unack_req;
+        struct libdtoe_pending_send_head free_req;
+        pthread_spinlock_t pending_send_lock;
+    } send;
+    int recv_event_index;
+    int recv_pending_iov_cnt;
+
     ssize_t leaked_size;
     ssize_t read_leaked_offset;
-    void* leaked_buff;
+    void *leaked_buff;
     int has_readable_event;
     int poll_mask;
     TAILQ_ENTRY(libdtoe_conn) readable_event_node;
@@ -177,15 +233,25 @@ typedef struct libdtoe_node {
     struct libdtoe_node *next_node;
 } libdtoe_node_s;
 
+typedef struct libdtoe_recv_channel_wrapper {
+    flexda_recv_channel_s channel;
+    struct kbdtoe_recv_events *events;
+    uint32_t next_event_idx;
+    uint32_t maxevents;
+} libdtoe_recv_channel_wrapper_s;
+
 typedef struct libdtoe_thread_pool {
     void *node;
     libdtoe_conn_pool_s connection;
     uint32_t channel_num;
-    struct knet_send_channel* send_channel[DTOE_CHANNEL_NUM_MAX];
-    struct knet_recv_channel* recv_channel[DTOE_CHANNEL_NUM_MAX];
-    struct knet_mr *send_mr;
+    flexda_send_channel_s* send_channel[DTOE_CHANNEL_NUM_MAX];
+    libdtoe_recv_channel_wrapper_s* recv_channel[DTOE_CHANNEL_NUM_MAX];
+    flexda_dtoe_mr_s *send_mr;
     uint32_t epoch; /*当前轮询到的channel位置*/
 } libdtoe_thread_pool_s;
 
 libdtoe_thread_pool_s* get_thread_pool(int idx);
+
+void* get_conn_by_fd(int fd);
+
 #endif

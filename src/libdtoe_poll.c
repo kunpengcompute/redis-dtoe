@@ -12,25 +12,42 @@
 * Encapsulate dtoe interface
 */
 #include "kbdtoe_base.h"
-#include "kbdtoe.h"
 #include "dtoe_mempool_mr.h"
 
 extern struct libdtoe_conn_readable_event_head g_readable_event_head;
 
-void kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], int *nr_recv_event)
+void kbdtoe_thread_poll(int thread_idx, struct kbdtoe_recv_events recv_events[], int *nr_recv_event)
 {
     libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
-    int nr_event = knet_poll_send_channel(thread_pool->send_channel[0], DTOE_CONN_PER_CHNL);
-    if(nr_event != 0) {
-        KBDTOE_ERR("kbdtoe kbdtoe thread poll send channel failed");
+    int nr_event = flexda_dtoe_poll_send_channel(thread_pool->send_channel[0], DTOE_CONN_PER_CHNL);
+    if (nr_event < 0) {
+        KBDTOE_ERR("kbdtoe kbdtoe thread poll send channel failed, ret:%d\n", nr_event);
+    } else if (nr_event > 0) {
+        KBDTOE_DEBUG("kbdtoe kbdtoe thread poll send channel, nr_event:%d\n", nr_event);
     }
 
-    *nr_recv_event = knet_poll_recv_channel(thread_pool->recv_channel[0], recv_events, DTOE_RECV_MAX_DESC_NUM);
-    for (int i = 0; i < *nr_recv_event; ++i) {
-        libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(recv_events[i].sockfd);
-        __atomic_add_fetch(&conn->recv_desc_num, recv_events[i].iov_cnt, __ATOMIC_RELAXED);
-        conn->poll_mask = 1;
+    libdtoe_recv_channel_wrapper_s *recv_channel = thread_pool->recv_channel[0];
+    recv_channel->next_event_idx = 0;
+    recv_channel->maxevents = (*nr_recv_event) != 0 ? (*nr_recv_event) : DTOE_RECV_MAX_DESC_NUM;
+    *nr_recv_event = 0;
+    recv_channel->events = recv_events;
+    int poll_max_cnt = recv_channel->maxevents;
+    if (poll_max_cnt > DTOE_RECV_MAX_DESC_NUM) {
+        poll_max_cnt = DTOE_RECV_MAX_DESC_NUM;
     }
+
+    flexda_dtoe_poll_receive_channel(&recv_channel->channel, poll_max_cnt);
+
+    for (uint32_t i = 0; i < recv_channel->next_event_idx; ++i) {
+        libdtoe_conn_s *conn = (libdtoe_conn_s *)get_conn_by_fd(recv_channel->events[i].sockfd);
+        if (conn != NULL) {
+            conn->recv_event_index = -1;
+            __atomic_add_fetch(&conn->recv_desc_num, recv_channel->events[i].iov_cnt, __ATOMIC_RELAXED);
+            conn->poll_mask = 1;
+        }
+    }
+
+    *nr_recv_event = recv_channel->next_event_idx;
 
     libdtoe_conn_s *node = NULL;
     TAILQ_FOREACH(node, &g_readable_event_head, readable_event_node) {
@@ -38,7 +55,11 @@ void kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], i
             node->poll_mask = 0;
             continue;
         }
+        if (*nr_recv_event >= recv_channel->maxevents) {
+            break;
+        }
         recv_events[*nr_recv_event].sockfd = node->fd;
+        recv_events[*nr_recv_event].iov_cnt = 0;
         node->poll_mask = 0;
         (*nr_recv_event)++;
     }
