@@ -1,6 +1,6 @@
-/*
+﻿/*
 * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
-* kraio is licensed under the Mulan PSL v2.
+* redis dtoe is licensed under the Mulan PSL v2.
 * You can use this software according to the terms and conditions of the Mulan PSL v2.
 * You may obtain a copy of Mulan PSL v2 at:
 *     http://license.coscl.org.cn/MulanPSL2
@@ -29,44 +29,15 @@
 #include <stdbool.h>
 #include "flexda_dtoe_interface.h"
 #include "kbdtoe.h"
+#include "kbdtoe_log.h"
 
 extern int g_kbdtoe_log_lvl;
-static inline void kbdtoe_log(const char *function, int line, int level, const char *format, ...)
-{
-    char buffer[1024];
-    va_list args;
-
-    if (level > g_kbdtoe_log_lvl)
-        return;
-
-    va_start(args, format);
-    vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
-
-    switch (level) {
-        case LOG_ERR:
-            fprintf(stderr, "[ERR] %s:%d - %s\n", function, line, buffer);
-            break;
-        case LOG_WARNING:
-            fprintf(stderr, "[WARN] %s:%d - %s\n", function, line, buffer);
-            break;
-        case LOG_INFO:
-            fprintf(stdout, "[INFO] %s:%d - %s\n", function, line, buffer);
-            break;
-        case LOG_DEBUG:
-            fprintf(stdout, "[DEBUG] %s:%d - %s\n", function, line, buffer);
-            break;
-        default:
-            break;
-    }
-}
-
-#define KBDTOE_ERR(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_ERR, fmt, ##args)
-#define KBDTOE_WARN(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_WARNING, fmt, ##args)
-#define KBDTOE_INFO(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_INFO, fmt, ##args)
-#define KBDTOE_DEBUG(fmt, args...) kbdtoe_log(__func__, __LINE__, LOG_DEBUG, fmt, ##args)
+#ifndef likely
 #define likely(x) __builtin_expect(!!(x), 1)
+#endif
+#ifndef unlikely
 #define unlikely(x) __builtin_expect(!!(x), 0)
+#endif
 
 #define DTOE_FAIL               (-1)
 #define DTOE_SUCCESS            (0)

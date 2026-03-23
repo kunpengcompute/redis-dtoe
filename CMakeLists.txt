@@ -1,11 +1,11 @@
 #This is the main CMAKE for build bin
 cmake_minimum_required(VERSION 3.16.5)
 project(libdtoe_api)
+include(CTest)
 
 #定义一个变量保存源码目录
 set(PROJECT_SRC_DIR ${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SRC_DIR}/include)
-include_directories(${PROJECT_SRC_DIR}/src)
 set(CMAKE_SKIP_RPATH TRUE)
 set(WANING_FLAGS "-Wall -Wfloat-equal -Wformat-2")
 file (GLOB SRC_FILES ${PROJECT_SRC_DIR}/src/*.c)
@@ -27,3 +27,16 @@ install(FILES  ${PROJECT_SRC_DIR}/include/kbdtoe.h DESTINATION include)
 install(TARGETS kbdtoe
       LIBRARY DESTINATION lib64
 )
+
+install(FILES conf/kbdtoe_rsyslog.conf DESTINATION /etc/rsyslog.d RENAME kbdtoe.conf)
+install(FILES conf/logrotate/kbdtoe DESTINATION /etc/logrotate.d)
+
+if(BUILD_TESTING)
+    add_executable(kbdtoe_log_test tests/kbdtoe_log_test.c)
+    target_include_directories(kbdtoe_log_test PRIVATE
+        ${PROJECT_SRC_DIR}/src
+        ${PROJECT_SRC_DIR}/include
+    )
+    target_link_libraries(kbdtoe_log_test PRIVATE kbdtoe)
+    add_test(NAME kbdtoe_log_test COMMAND kbdtoe_log_test)
+endif()
