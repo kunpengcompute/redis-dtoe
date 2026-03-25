@@ -491,6 +491,9 @@ int kbdtoe_conn_start_offload(int sockfd)
 
     set_conn_by_fd(sockfd, conn);
     conn->dtoe_conn = out.dtoe_conn;
+    /* Initialize last_ack_sn and comp_sn for is_send_comlete() */
+    conn->send.comp_sn = out.send_sn - 1;
+    conn->send.last_ack_sn = out.send_sn - 1;
     conn->send_channel = in.send_channel;
     conn->recv_channel = (flexda_recv_channel_s *)in.rev_channel;
     conn->leaked_size = 0;
