@@ -246,6 +246,8 @@ typedef struct libdtoe_thread_pool {
     uint32_t channel_num;
     flexda_send_channel_s* send_channel[DTOE_CHANNEL_NUM_MAX];
     libdtoe_recv_channel_wrapper_s* recv_channel[DTOE_CHANNEL_NUM_MAX];
+    int send_channel_fd[DTOE_CHANNEL_NUM_MAX];
+    int recv_channel_fd[DTOE_CHANNEL_NUM_MAX];
     flexda_dtoe_mr_s *send_mr;
     uint32_t epoch; /*当前轮询到的channel位置*/
 } libdtoe_thread_pool_s;

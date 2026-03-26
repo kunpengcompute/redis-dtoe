@@ -12,6 +12,7 @@
 * Encapsulate dtoe interface
 */
 #include <sys/resource.h>
+#include <sys/epoll.h>
 #include "kbdtoe.h"
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
@@ -333,28 +334,31 @@ static int libdtoe_all_threads_create_channel()
                 KBDTOE_ERR("malloc send channel wrapper failed");
                 goto cleanup;
             }
-            ret = flexda_dtoe_create_send_channel(g_dev_sn, FLEXDA_POLL_SCHD, g_thread_pool[i].send_channel[j]);
+            ret = flexda_dtoe_create_send_channel(g_dev_sn, FLEXDA_EPOLL_SCHD, g_thread_pool[i].send_channel[j]);
             if (ret != 0) {
                 KBDTOE_ERR("create send channel failed, ret %d", ret);
                 free(g_thread_pool[i].send_channel[j]);
                 g_thread_pool[i].send_channel[j] = NULL;
                 goto cleanup;
             }
+            g_thread_pool[i].send_channel_fd[j] = g_thread_pool[i].send_channel[j]->epoll_fd;
             g_thread_pool[i].recv_channel[j] = (libdtoe_recv_channel_wrapper_s*)malloc(sizeof(libdtoe_recv_channel_wrapper_s));
             if (g_thread_pool[i].recv_channel[j] == NULL) {
                 KBDTOE_ERR("malloc recv channel wrapper failed");
                 goto cleanup;
             }
             g_thread_pool[i].recv_channel[j]->next_event_idx = 0;
-            ret = flexda_dtoe_create_receive_channel(g_dev_sn, FLEXDA_POLL_SCHD, &g_thread_pool[i].recv_channel[j]->channel);
+            ret = flexda_dtoe_create_receive_channel(g_dev_sn, FLEXDA_EPOLL_SCHD, &g_thread_pool[i].recv_channel[j]->channel);
             if (ret != 0) {
                 KBDTOE_ERR("create recv channel failed, ret %d", ret);
                 free(g_thread_pool[i].recv_channel[j]);
                 g_thread_pool[i].recv_channel[j] = NULL;
                 goto cleanup;
             }
+            g_thread_pool[i].recv_channel_fd[j] = g_thread_pool[i].recv_channel[j]->channel.epoll_fd;
+
+            g_thread_pool[i].channel_num++;
         }
-        g_thread_pool[i].channel_num++;
     }
     return DTOE_SUCCESS;
 cleanup:
@@ -523,7 +527,7 @@ bool kbdtoe_is_conn_offload(int sockfd)
     if (conn == NULL) {
         return false;
     }
-    return conn->offload_status == DTOE_OFFLOAD_START;
+    return true;
 }
 
 int kbdtoe_close(int fd)
@@ -539,4 +543,57 @@ void kbdtoe_uninit()
 {
     flexda_dtoe_uninit();
     dtoe_mempool_destroy();
+}
+
+bool kbdtoe_is_channel_epoll_fd(int thread_idx, int fd)
+{
+    if (thread_idx < 0 || thread_idx >= g_thread_num) {
+        KBDTOE_ERR("Invalid thread_idx %d", thread_idx);
+        return false;
+    }
+
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
+    if (thread_pool == NULL) {
+        KBDTOE_ERR("get thread pool failed for thread_idx %d", thread_idx);
+        return false;
+    }
+
+    for (int i = 0; i < thread_pool->channel_num; i++) {
+        if (thread_pool->send_channel_fd[i] == fd || thread_pool->recv_channel_fd[i] == fd) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int kbdtoe_register_channel_fd_to_epoll(int thread_idx, int epoll_fd)
+{
+    if (thread_idx < 0 || thread_idx >= g_thread_num) {
+        KBDTOE_ERR("Invalid thread_idx %d", thread_idx);
+        return DTOE_FAIL;
+    }
+
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
+    if (thread_pool == NULL) {
+        KBDTOE_ERR("get thread pool failed for thread_idx %d", thread_idx);
+        return DTOE_FAIL;
+    }
+
+    for (int i = 0; i < thread_pool->channel_num; i++) {
+        struct epoll_event ee = {0};
+        ee.events = EPOLLIN;
+        ee.data.fd = thread_pool->send_channel_fd[i];
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, thread_pool->send_channel_fd[i], &ee) != 0) {
+            KBDTOE_ERR("Failed to add send channel fd %d to epoll, error: %s", thread_pool->send_channel_fd[i], strerror(errno));
+            return DTOE_FAIL;
+        }
+        ee.data.fd = thread_pool->recv_channel_fd[i];
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, thread_pool->recv_channel_fd[i], &ee) != 0) {
+            KBDTOE_ERR("Failed to add recv channel fd %d to epoll, error: %s", thread_pool->recv_channel_fd[i], strerror(errno));
+            return DTOE_FAIL;
+        }
+    }
+
+    return DTOE_SUCCESS;
 }
