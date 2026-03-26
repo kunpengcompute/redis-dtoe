@@ -1,0 +1,18 @@
+﻿/var/log/kbdtoe/kbdtoe.log 
+{
+    daily
+    compress
+    copytruncate
+    notifempty
+    maxage 365
+    rotate 10
+    size 2048k
+    missingok
+    sharedscripts
+    postrotate
+        chmod 400 /var/log/kbdtoe/kbdtoe.log?* > /dev/null 2>&1 || true
+        /usr/bin/systemctl kill -s HUP rsyslog.service >/dev/null 2>&1 || true
+    endscript
+}
+
+

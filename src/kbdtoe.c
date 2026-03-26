@@ -1,6 +1,6 @@
 /*
 * Copyright (c) Huawei Technologies Co., Ltd. 2026-2026. All rights reserved.
-* kraio is licensed under the Mulan PSL v2.
+* redis dtoe is licensed under the Mulan PSL v2.
 * You can use this software according to the terms and conditions of the Mulan PSL v2.
 * You may obtain a copy of Mulan PSL v2 at:
 *     http://license.coscl.org.cn/MulanPSL2
@@ -378,8 +378,8 @@ cleanup:
 
 int kbdtoe_init(const char* dtoe_ip, unsigned int max_conn_num)
 {
+    kbdtoe_log_init();
     int ret = 0;
-
     g_max_conn_num = max_conn_num;
     ret = libdtoe_fd_init();
     if (ret != 0) {
@@ -542,4 +542,5 @@ void kbdtoe_uninit()
 {
     flexda_dtoe_uninit();
     dtoe_mempool_destroy();
+    kbdtoe_log_uninit();
 }
