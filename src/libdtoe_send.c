@@ -31,7 +31,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     if (memcpy_ret != EOK) {
         KBDTOE_ERR("kbdtoe write memcpy_s failed");
         dtoe_mempool_free(0, (uint64_t)ptr);
-        errno = EAGAIN;
+        errno = EFAULT;
         return -1;
     }
     struct iovec iov[1];
@@ -42,7 +42,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     if (conn == NULL) {
         KBDTOE_ERR("kbdtoe write, conn is null for fd %d", fd);
         dtoe_mempool_free(0, (uint64_t)ptr);
-        errno = EAGAIN;
+        errno = EINVAL;
         return -1;
     }
 
@@ -103,7 +103,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         if (memcpy_ret != EOK) {
             KBDTOE_ERR("kbdtoe write memcpy_s failed");
             dtoe_mempool_free(0, (uint64_t)ptr);
-            errno = EAGAIN;
+            errno = EFAULT;
             return -1;
         }
         offset += iov[i].iov_len;
@@ -117,7 +117,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     if (conn == NULL) {
         KBDTOE_ERR("kbdtoe writev, conn is null for fd %d", fd);
         dtoe_mempool_free(0, (uint64_t)ptr);
-        errno = EAGAIN;
+        errno = EINVAL;
         return -1;
     }
 
