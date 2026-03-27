@@ -11,14 +11,13 @@
 *
 * Encapsulate dtoe interface
 */
+#include "kbdtoe.h"
 #include <sys/resource.h>
 #include <sys/epoll.h>
-#include "kbdtoe.h"
 #include "kbdtoe_base.h"
 #include "dtoe_mempool_mr.h"
 #include "securec.h"
 
-int g_kbdtoe_log_lvl = LOG_INFO;
 static uint8_t g_thread_num = 1; // 默认单线程
 static uint8_t g_channel_num = 1; // 默认每个线程1对信道,redis 单实例最大支持1W，单对信道支持8k
 static libdtoe_thread_pool_s g_thread_pool[DTOE_THREAD_MAX];
@@ -283,12 +282,6 @@ static int libdtoe_init_conn_pool_per_thread()
 
 static int libdtoe_destory_mbuf(libdtoe_thread_pool_s *thread_info)
 {
-    for (int i = 0; i < DTOE_MAX_CONN_PER_THREAD; ++i) {
-        if (thread_info->connection.conn_pool[i].send_buf == NULL) {
-            continue;
-        }
-        thread_info->connection.conn_pool[i].send_buf = NULL;
-    }
     free(thread_info->send_mr->addr);
     return DTOE_SUCCESS;
 }
@@ -445,12 +438,10 @@ fail_fd_init:
 
 int libdtoe_conn_init(libdtoe_thread_pool_s *thread_info, libdtoe_conn_s* libdtoe_conn)
 {
-    libdtoe_conn->recv_status = DTOE_RECV_PREPARE;
     libdtoe_conn->recv_desc_num = 0;
     libdtoe_conn->thread_pool_ptr = (void*) thread_info;
     libdtoe_conn->poll_mask = 0;
     libdtoe_conn->recv_event_index = -1;
-    libdtoe_conn->recv_pending_iov_cnt = 0;
     libdtoe_conn->send.last_send_sn = 0;
     libdtoe_conn->send.comp_sn = 0;
     libdtoe_conn->send.last_ack_sn = 0;

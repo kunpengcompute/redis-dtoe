@@ -12,11 +12,8 @@
 * Encapsulate dtoe interface
 */
 #include "dtoe_mempool_mr.h"
-#include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <pthread.h>
-#include <malloc.h>
 #include "kbdtoe_base.h"
 #include "securec.h"
 
