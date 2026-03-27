@@ -12,7 +12,6 @@
 */
 #include "kbdtoe_log.h"
 #include <stdio.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdarg.h>
@@ -25,7 +24,6 @@
 #include "kbdtoe_base.h"
 /* Some toolchains require an explicit prototype for getpid() */
 extern pid_t getpid(void);
-
 
 #define PROCESS_PATH_SIZE 1024
 #define MAX_LOG_LEN 1024
@@ -204,7 +202,6 @@ static int log_message(const char *function, int line, int level, const char *fo
 
     return ret;
 }
-
 
 void kbdtoe_log(const char *function, int line, int level, const char *format, ...)
 {

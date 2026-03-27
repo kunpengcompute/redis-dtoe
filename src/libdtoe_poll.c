@@ -12,7 +12,6 @@
 * Encapsulate dtoe interface
 */
 #include "kbdtoe_base.h"
-#include "dtoe_mempool_mr.h"
 
 extern struct libdtoe_conn_readable_event_head g_readable_event_head;
 
