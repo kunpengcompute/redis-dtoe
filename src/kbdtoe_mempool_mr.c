@@ -11,7 +11,7 @@
 *
 * Encapsulate dtoe interface
 */
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include <stdlib.h>
 #include <pthread.h>
 #include <sys/mman.h>
@@ -345,7 +345,7 @@ static void slab_free_obj(void* ptr)
     pthread_mutex_unlock(&cache->lock);
 }
 
-int  dtoe_mempool_init()
+int  kbdtoe_mempool_init()
 {
     if (buddy_init() != 0) {
         return FAIL;
@@ -363,7 +363,7 @@ flexda_dtoe_mr_s *get_dtoe_mr_s()
     return g_dmr;
 }
 
-void* dtoe_mempool_alloc(size_t size)
+void* kbdtoe_mempool_alloc(size_t size)
 {
     for (int i = 0; i < NUM_SLAB_CACHES; ++i) {
         if (size <= g_slab_caches[i].obj_size) {
@@ -384,7 +384,7 @@ void* dtoe_mempool_alloc(size_t size)
     return (char*)p + sizeof(MpHeader);
 }
 
-void  dtoe_mempool_free(int sockfd, uint64_t w_id)
+void  kbdtoe_mempool_free(int sockfd, uint64_t w_id)
 {
     void *ptr = (void*)w_id;
     if (!ptr) {
@@ -400,7 +400,7 @@ void  dtoe_mempool_free(int sockfd, uint64_t w_id)
     }
 }
 
-void dtoe_mempool_stats()
+void kbdtoe_mempool_stats()
 {
     KBDTOE_INFO("=== Buddy stats ===\n");
     KBDTOE_INFO("Buddy total allocated:%zu bytes\n", g_buddy_total_alloc);
@@ -425,7 +425,7 @@ void dtoe_mempool_stats()
     }
 }
 
-void dtoe_mempool_destroy()
+void kbdtoe_mempool_destroy()
 {
     if (g_memory_pool == NULL) {
         return;
@@ -454,3 +454,4 @@ void dtoe_mempool_destroy()
         g_dmr = NULL;
     }
 }
+
