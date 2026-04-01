@@ -395,7 +395,7 @@ void  dtoe_mempool_free(int sockfd, uint64_t w_id)
     }
 }
 
-void dtoe_mempool_stats()
+void dtoe_mp_stats()
 {
     KBDTOE_INFO("=== Buddy stats ===\n");
     KBDTOE_INFO("Buddy total allocated:%zu bytes\n", g_buddy_total_alloc);
