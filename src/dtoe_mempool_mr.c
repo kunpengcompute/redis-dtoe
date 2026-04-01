@@ -62,7 +62,6 @@ static pthread_mutex_t g_buddy_lock;
 static size_t g_buddy_total_alloc = 0;
 static size_t g_buddy_peak_alloc = 0;
 static flexda_dtoe_mr_s *g_dmr;
-static uint64_t g_dev_sn = 0;
 
 static int size_to_level(size_t size)
 {
@@ -101,7 +100,7 @@ static int buddy_init()
         munmap(g_memory_pool, POOL_SIZE);
         return FAIL;
     }
-    int reg_ret = flexda_dtoe_reg_mr(g_dev_sn, g_memory_pool, POOL_SIZE, g_dmr);
+    int reg_ret = flexda_dtoe_reg_mr(get_dtoe_dev_sn(), g_memory_pool, POOL_SIZE, g_dmr);
     if (reg_ret != 0) {
         munmap(g_memory_pool, POOL_SIZE);
         free(g_dmr);
@@ -110,7 +109,7 @@ static int buddy_init()
     }
     ret = pthread_mutex_init(&g_buddy_lock, NULL);
     if (ret != 0) {
-        flexda_dtoe_unreg_mr(g_dev_sn, g_dmr);
+        flexda_dtoe_unreg_mr(get_dtoe_dev_sn(), g_dmr);
         munmap(g_memory_pool, POOL_SIZE);
         free(g_dmr);
         g_dmr = NULL;
@@ -442,7 +441,7 @@ void dtoe_mempool_destroy()
     munmap(g_memory_pool, POOL_SIZE);
     g_memory_pool = NULL;
     if (g_dmr != NULL) {
-        flexda_dtoe_unreg_mr(g_dev_sn, g_dmr);
+        flexda_dtoe_unreg_mr(get_dtoe_dev_sn(), g_dmr);
         free(g_dmr);
         g_dmr = NULL;
     }

@@ -436,6 +436,11 @@ fail_fd_init:
     return DTOE_FAIL;
 }
 
+uint64_t get_dtoe_dev_sn()
+{
+  return g_dev_sn;
+}
+
 int libdtoe_conn_init(libdtoe_thread_pool_s *thread_info, libdtoe_conn_s* libdtoe_conn)
 {
     libdtoe_conn->recv_desc_num = 0;

@@ -152,4 +152,5 @@ typedef struct libdtoe_thread_pool {
 
 libdtoe_thread_pool_s* get_thread_pool(int idx);
 void* get_conn_by_fd(int fd);
+uint64_t get_dtoe_dev_sn();
 #endif
