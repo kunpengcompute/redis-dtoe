@@ -72,7 +72,7 @@ flexda_dtoe_mr_s *get_dtoe_mr_s();
   Output       : None
   Return Value : None
  **************************************************************/
-void dtoe_mp_stats();
+void dtoe_mempool_stats();
 #ifdef __cplusplus
 }
 #endif
