@@ -12,7 +12,7 @@
 * Encapsulate dtoe interface
 */
 #include "kbdtoe_base.h"
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include "securec.h"
 
 ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
@@ -20,7 +20,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     int ret = 0;
     int memcpy_ret;
     unsigned char *ptr = NULL;
-    ptr = (unsigned char*)dtoe_mempool_alloc(nbyte);
+    ptr = (unsigned char*)kbdtoe_mempool_alloc(nbyte);
     if (ptr == NULL) {
         KBDTOE_ERR("kbdtoe write mempool alloc fail");
         errno = EAGAIN;
@@ -29,7 +29,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     memcpy_ret = memcpy_s(ptr, nbyte, buf, nbyte);
     if (memcpy_ret != EOK) {
         KBDTOE_ERR("kbdtoe write memcpy_s failed");
-        dtoe_mempool_free(0, (uint64_t)ptr);
+        kbdtoe_mempool_free(0, (uint64_t)ptr);
         errno = EFAULT;
         return -1;
     }
@@ -40,7 +40,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     libdtoe_conn_s *conn = (libdtoe_conn_s *)get_conn_by_fd(fd);
     if (conn == NULL) {
         KBDTOE_ERR("kbdtoe write, conn is null for fd %d", fd);
-        dtoe_mempool_free(0, (uint64_t)ptr);
+        kbdtoe_mempool_free(0, (uint64_t)ptr);
         errno = EINVAL;
         return -1;
     }
@@ -52,7 +52,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     };
     ret = flexda_dtoe_send(conn->dtoe_conn, iov, 1, &info);
     if (ret < 0) {
-        dtoe_mempool_free(0, (uint64_t)ptr);
+        kbdtoe_mempool_free(0, (uint64_t)ptr);
         errno = -ret;
         return -1;
     }
@@ -69,7 +69,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     }
 
     if (pending != NULL) {
-        pending->free_cb = dtoe_mempool_free;
+        pending->free_cb = kbdtoe_mempool_free;
         pending->wr_id = (uint64_t)ptr;
         pending->sockfd = fd;
         pending->send_sn = info.tx_out.curr_msn;
@@ -90,7 +90,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         total_size += iov[i].iov_len;
     }
     unsigned char *ptr = NULL;
-    ptr = (unsigned char*)dtoe_mempool_alloc(total_size);
+    ptr = (unsigned char*)kbdtoe_mempool_alloc(total_size);
     if (ptr == NULL) {
         KBDTOE_ERR("kbdtoe writev mempool alloc fail");
         errno = EAGAIN;
@@ -101,7 +101,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         memcpy_ret = memcpy_s(ptr + offset, iov[i].iov_len, iov[i].iov_base, iov[i].iov_len);
         if (memcpy_ret != EOK) {
             KBDTOE_ERR("kbdtoe write memcpy_s failed");
-            dtoe_mempool_free(0, (uint64_t)ptr);
+            kbdtoe_mempool_free(0, (uint64_t)ptr);
             errno = EFAULT;
             return -1;
         }
@@ -115,7 +115,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     libdtoe_conn_s *conn = (libdtoe_conn_s *)get_conn_by_fd(fd);
     if (conn == NULL) {
         KBDTOE_ERR("kbdtoe writev, conn is null for fd %d", fd);
-        dtoe_mempool_free(0, (uint64_t)ptr);
+        kbdtoe_mempool_free(0, (uint64_t)ptr);
         errno = EINVAL;
         return -1;
     }
@@ -127,7 +127,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     };
     ret = flexda_dtoe_send(conn->dtoe_conn, dtoe_iov, 1, &info);
     if (ret < 0) {
-        dtoe_mempool_free(0, (uint64_t)ptr);
+        kbdtoe_mempool_free(0, (uint64_t)ptr);
         errno = -ret;
         return -1;
     }
@@ -144,7 +144,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     }
 
     if (pending != NULL) {
-        pending->free_cb = dtoe_mempool_free;
+        pending->free_cb = kbdtoe_mempool_free;
         pending->wr_id = (uint64_t)ptr;
         pending->sockfd = fd;
         pending->send_sn = info.tx_out.curr_msn;
@@ -156,3 +156,4 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
 
     return ret;
 }
+

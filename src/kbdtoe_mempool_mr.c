@@ -11,9 +11,10 @@
 *
 * Encapsulate dtoe interface
 */
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include <stdlib.h>
 #include <pthread.h>
+#include <sys/mman.h>
 #include "kbdtoe_base.h"
 #include "securec.h"
 
@@ -61,7 +62,6 @@ static pthread_mutex_t g_buddy_lock;
 static size_t g_buddy_total_alloc = 0;
 static size_t g_buddy_peak_alloc = 0;
 static flexda_dtoe_mr_s *g_dmr;
-static uint64_t g_dev_sn = 0;
 
 static int size_to_level(size_t size)
 {
@@ -83,29 +83,39 @@ static void* get_buddy(void* addr, size_t size)
 static int buddy_init()
 {
     int ret;
-    size_t mempool_size = POOL_SIZE;
-    g_memory_pool = aligned_alloc(DTOE_PAGE_SIZE, mempool_size);
-    if (g_memory_pool == NULL) {
-        KBDTOE_ERR("malloc mempool failed!\n");
+    g_memory_pool = mmap(NULL, POOL_SIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (g_memory_pool == MAP_FAILED) {
+        KBDTOE_ERR("mmap failed!\n");
+        g_memory_pool = NULL;
         return FAIL;
     }
-    (void)memset_s(g_memory_pool, mempool_size, 0, mempool_size);
+    if (madvise(g_memory_pool, POOL_SIZE, MADV_DONTFORK) !=0) {
+        KBDTOE_ERR("madvise failed!\n");
+        munmap(g_memory_pool, POOL_SIZE);
+        g_memory_pool = NULL;
+        return FAIL;
+    }
+
+    (void)memset_s(g_memory_pool, POOL_SIZE, 0, POOL_SIZE);
     g_dmr = (flexda_dtoe_mr_s*)malloc(sizeof(flexda_dtoe_mr_s));
     if (g_dmr == NULL) {
-        free(g_memory_pool);
+        munmap(g_memory_pool, POOL_SIZE);
+        g_memory_pool = NULL;
         return FAIL;
     }
-    int reg_ret = flexda_dtoe_reg_mr(g_dev_sn, g_memory_pool, mempool_size, g_dmr);
+    int reg_ret = flexda_dtoe_reg_mr(get_dtoe_dev_sn(), g_memory_pool, POOL_SIZE, g_dmr);
     if (reg_ret != 0) {
-        free(g_memory_pool);
+        munmap(g_memory_pool, POOL_SIZE);
+        g_memory_pool = NULL;
         free(g_dmr);
         g_dmr = NULL;
         return FAIL;
     }
     ret = pthread_mutex_init(&g_buddy_lock, NULL);
     if (ret != 0) {
-        flexda_dtoe_unreg_mr(g_dev_sn, g_dmr);
-        free(g_memory_pool);
+        flexda_dtoe_unreg_mr(get_dtoe_dev_sn(), g_dmr);
+        munmap(g_memory_pool, POOL_SIZE);
+        g_memory_pool = NULL;
         free(g_dmr);
         g_dmr = NULL;
         return FAIL;
@@ -335,7 +345,7 @@ static void slab_free_obj(void* ptr)
     pthread_mutex_unlock(&cache->lock);
 }
 
-int  dtoe_mempool_init()
+int  kbdtoe_mempool_init()
 {
     if (buddy_init() != 0) {
         return FAIL;
@@ -353,7 +363,7 @@ flexda_dtoe_mr_s *get_dtoe_mr_s()
     return g_dmr;
 }
 
-void* dtoe_mempool_alloc(size_t size)
+void* kbdtoe_mempool_alloc(size_t size)
 {
     for (int i = 0; i < NUM_SLAB_CACHES; ++i) {
         if (size <= g_slab_caches[i].obj_size) {
@@ -374,7 +384,7 @@ void* dtoe_mempool_alloc(size_t size)
     return (char*)p + sizeof(MpHeader);
 }
 
-void  dtoe_mempool_free(int sockfd, uint64_t w_id)
+void  kbdtoe_mempool_free(int sockfd, uint64_t w_id)
 {
     void *ptr = (void*)w_id;
     if (!ptr) {
@@ -390,7 +400,7 @@ void  dtoe_mempool_free(int sockfd, uint64_t w_id)
     }
 }
 
-void dtoe_mempool_stats()
+void kbdtoe_mempool_stats()
 {
     KBDTOE_INFO("=== Buddy stats ===\n");
     KBDTOE_INFO("Buddy total allocated:%zu bytes\n", g_buddy_total_alloc);
@@ -415,8 +425,11 @@ void dtoe_mempool_stats()
     }
 }
 
-void dtoe_mempool_destroy()
+void kbdtoe_mempool_destroy()
 {
+    if (g_memory_pool == NULL) {
+        return;
+    }
     for (int i = 0; i < NUM_SLAB_CACHES; ++i) {
         SlabCache* sc = &g_slab_caches[i];
         pthread_mutex_lock(&sc->lock);
@@ -433,11 +446,12 @@ void dtoe_mempool_destroy()
         pthread_mutex_destroy(&sc->lock);
     }
     pthread_mutex_destroy(&g_buddy_lock);
-    free(g_memory_pool);
+    munmap(g_memory_pool, POOL_SIZE);
     g_memory_pool = NULL;
     if (g_dmr != NULL) {
-        flexda_dtoe_unreg_mr(g_dev_sn, g_dmr);
+        flexda_dtoe_unreg_mr(get_dtoe_dev_sn(), g_dmr);
         free(g_dmr);
         g_dmr = NULL;
     }
 }
+

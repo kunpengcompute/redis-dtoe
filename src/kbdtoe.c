@@ -15,7 +15,7 @@
 #include <sys/resource.h>
 #include <sys/epoll.h>
 #include "kbdtoe_base.h"
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include "securec.h"
 
 static uint8_t g_thread_num = 1; // 默认单线程
@@ -421,7 +421,7 @@ int kbdtoe_init(const char* dtoe_ip, unsigned int max_conn_num)
         KBDTOE_ERR("kbdtoe init thread channel failed");
         goto fail_dtoe_init;
     }
-    ret = dtoe_mempool_init();
+    ret = kbdtoe_mempool_init();
     if (ret != DTOE_SUCCESS) {
         KBDTOE_ERR("kbdtoe init memory pool failed");
         goto fail_dtoe_init;
@@ -434,6 +434,11 @@ fail_dtoe_init:
 fail_fd_init:
     libdtoe_fd_dinit();
     return DTOE_FAIL;
+}
+
+uint64_t get_dtoe_dev_sn()
+{
+  return g_dev_sn;
 }
 
 int libdtoe_conn_init(libdtoe_thread_pool_s *thread_info, libdtoe_conn_s* libdtoe_conn)
@@ -536,7 +541,7 @@ int kbdtoe_close(int fd)
 void kbdtoe_uninit()
 {
     flexda_dtoe_uninit();
-    dtoe_mempool_destroy();
+    kbdtoe_mempool_destroy();
     kbdtoe_log_uninit();
 }
 

@@ -11,8 +11,8 @@
 *
 * Encapsulate dtoe interface
 */
-#ifndef DTOE_MEMPOOL_MR_H
-#define DTOE_MEMPOOL_MR_H
+#ifndef KBDTOE_MEMPOOL_MR_H
+#define KBDTOE_MEMPOOL_MR_H
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -22,38 +22,39 @@ extern "C" {
 #include "kbdtoe_base.h"
 
 /******************************************************************
-  Prototype    : dtoe_mempool_init 
+  Prototype    : kbdtoe_mempool_init 
   Description  : 分配1G的内存并完成虚拟地址物理地址的映射
-  Return Value : 0 success， others-failed
+  Return Value : 0 success others-failed
  **************************************************************/
-int dtoe_mempool_init();
+int kbdtoe_mempool_init();
 
 /******************************************************************
-  Prototype    : dtoe_mempool_destroy 
+  Prototype    : kbdtoe_mempool_destroy 
   Description  : 释放内存池
   Input        : None
   Output       : None
   Return Value : None
  **************************************************************/
-void dtoe_mempool_destroy();
+void kbdtoe_mempool_destroy();
 
 /******************************************************************
-  Prototype    : dtoe_mempool_alloc 
+  Prototype    : kbdtoe_mempool_alloc 
   Description  : 从内存池获取所需要大小内存的起始地址
   Input        : size_t size: 需要内存的大小
   Output       : None
   Return Value : NULL failed, others return start address
  **************************************************************/
-void* dtoe_mempool_alloc(size_t size);
+void* kbdtoe_mempool_alloc(size_t size);
 
 /******************************************************************
-  Prototype    : dtoe_mempool_free 
+  Prototype    : kbdtoe_mempool_free 
   Description  : 将内存归还到内存池
-  Input        : uint64_t wid: dtoe成功初始化后的设备序列号
+  Input        : uint64_t wid:  内存池的地址
+  Input        : int sockfd:  socket的fd
   Output       : None
   Return Value : None
  **************************************************************/
-void dtoe_mempool_free(int sockfd, uint64_t wid);
+void kbdtoe_mempool_free(int sockfd, uint64_t wid);
 
 
 /******************************************************************
@@ -66,14 +67,15 @@ void dtoe_mempool_free(int sockfd, uint64_t wid);
 flexda_dtoe_mr_s *get_dtoe_mr_s();
 
 /******************************************************************
-  Prototype    : dtoe_mp_stats
+  Prototype    : kbdtoe_mempool_stats
   Description  : 打印内存使用情况
   Input        : None
   Output       : None
   Return Value : None
  **************************************************************/
-void dtoe_mp_stats();
+void kbdtoe_mempool_stats();
 #ifdef __cplusplus
 }
 #endif
 #endif
+
