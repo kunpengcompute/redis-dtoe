@@ -53,9 +53,9 @@ int kbdtoe_conn_start_offload(int sockfd);
   Intput       : int thread_index  线程的index
   Output       ：1) struct knet_recv_events recv_events[] 线程可读的事件信息
                  2) int *nr_recv_event  线程可读的事事件个数
-  Return Value : None
+  Return Value : true-还有事件需要继续poll， false-没有事件了
  **************************************************************/
-void kbdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
+ bool kbdtoe_thread_poll(int thread_index, struct knet_recv_events recv_events[], int *nr_recv_event);
 
 /******************************************************************
   Prototype    : kbdtoe_read 
@@ -109,8 +109,35 @@ bool kbdtoe_is_conn_offload(int sockfd);
  **************************************************************/
 void kbdtoe_conn_status_for_close(int sockfd);
 
+/******************************************************************
+Prototype    : kbdtoe_is_channel_epoll_fd
+Description  : 判断fd是否为dtoe通信的channel epoll fd
+Input        : int thread_idx 线程index
+            : int fd 待判断的fd
+Return Value : true-是channel epoll fd， false-非channel epoll fd
+**************************************************************/
+bool kbdtoe_is_channel_epoll_fd(int thread_idx, int fd);
+
+/******************************************************************
+  Prototype    : kbdtoe_register_channel_fd_to_epoll
+  Description  : 将dtoe通信的channel fd注册到epoll中
+  Input        : int thread_idx 线程index
+              : int epoll_fd epoll fd
+  Return Value : 0 success， others-failed
+**************************************************************/
+int kbdtoe_register_channel_fd_to_epoll(int thread_idx, int epoll_fd);
+
 typedef void (*dtoe_close_done_callback_t) (int sockfd);
 void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb);
+
+/******************************************************************
+  Prototype    : kbdtoe_mempool_stats
+  Description  : 打印内存使用情况
+  Input        : None
+  Output       : None
+  Return Value : None
+ **************************************************************/
+ void kbdtoe_mempool_stats();
 #ifdef __cplusplus
 }
 #endif

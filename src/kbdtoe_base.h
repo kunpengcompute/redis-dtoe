@@ -183,6 +183,8 @@ typedef struct libdtoe_thread_pool {
     uint32_t channel_num;
     struct knet_send_channel* send_channel[DTOE_CHANNEL_NUM_MAX];
     struct knet_recv_channel* recv_channel[DTOE_CHANNEL_NUM_MAX];
+    int send_channel_fd[DTOE_CHANNEL_NUM_MAX];
+    int recv_channel_fd[DTOE_CHANNEL_NUM_MAX];
     struct knet_mr *send_mr;
     uint32_t epoch; /*当前轮询到的channel位置*/
 } libdtoe_thread_pool_s;

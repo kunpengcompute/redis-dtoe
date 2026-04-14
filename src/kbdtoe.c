@@ -12,8 +12,9 @@
 * Encapsulate dtoe interface
 */
 #include "kbdtoe.h"
+#include <sys/epoll.h>
 #include "kbdtoe_base.h"
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include "securec.h"
 
 static uint8_t g_thread_num = 1; // 默认单线程
@@ -155,19 +156,21 @@ static int libdtoe_all_threads_create_channel()
             return DTOE_FAIL;
         }
         for (int j = 0; j < (g_channel_num / g_thread_num); ++j) {
-            ret = knet_create_send_channel(KNET_POLL_SCHD, DTOE_RING_SSQ_DEPTH, &g_thread_pool[i].send_channel[j]);
+            ret = knet_create_send_channel(KNET_EPOLL_SCHD, DTOE_RING_SSQ_DEPTH, &g_thread_pool[i].send_channel[j]);
             if (ret != 0) {
                 KBDTOE_ERR("create send channel failed, ret %d", ret);
                 goto cleanup;
             }
-            ret = knet_create_recv_channel(KNET_POLL_SCHD, DTOE_RING_SRQ_DEPTH, &g_thread_pool[i].recv_channel[j]);
+            g_thread_pool[i].send_channel_fd[j] = g_thread_pool[i].send_channel[j]->epoll_fd;
+            ret = knet_create_recv_channel(KNET_EPOLL_SCHD, DTOE_RING_SRQ_DEPTH, &g_thread_pool[i].recv_channel[j]);
             if (ret != 0) {
                 KBDTOE_ERR("create recv channel failed, ret %d", ret);
                 goto cleanup;
 
             }
-        }
-        g_thread_pool[i].channel_num++;
+            g_thread_pool[i].recv_channel_fd[j] = g_thread_pool[i].recv_channel[j]->epoll_fd;
+            g_thread_pool[i].channel_num++;
+        } 
     }
     return DTOE_SUCCESS;
     cleanup:
@@ -198,7 +201,7 @@ int kbdtoe_init(const char* dtoe_ip, unsigned int max_conn_num)
         KBDTOE_ERR("kbdtoe init thread channel failed");
         return DTOE_FAIL;
     }
-    ret = dtoe_mempool_init();
+    ret = kbdtoe_mempool_init();
     if (ret != DTOE_SUCCESS) {
         KBDTOE_ERR("kbdtoe init memory pool failed");
         return DTOE_FAIL;
@@ -287,5 +290,58 @@ int kbdtoe_close(int fd)
 void kbdtoe_uninit()
 {
     knet_uninit();
-    dtoe_mempool_destroy();
+    kbdtoe_mempool_destroy();
+}
+
+bool kbdtoe_is_channel_epoll_fd(int thread_idx, int fd)
+{
+    if (thread_idx < 0 || thread_idx >= g_thread_num) {
+        KBDTOE_ERR("Invalid thread_idx %d", thread_idx);
+        return false;
+    }
+
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
+    if (thread_pool == NULL) {
+        KBDTOE_ERR("get thread pool failed for thread_idx %d", thread_idx);
+        return false;
+    }
+
+    for (int i = 0; i < thread_pool->channel_num; i++) {
+        if (thread_pool->send_channel_fd[i] == fd || thread_pool->recv_channel_fd[i] == fd) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+int kbdtoe_register_channel_fd_to_epoll(int thread_idx, int epoll_fd)
+{
+    if (thread_idx < 0 || thread_idx >= g_thread_num) {
+        KBDTOE_ERR("Invalid thread_idx %d", thread_idx);
+        return DTOE_FAIL;
+    }
+
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
+    if (thread_pool == NULL) {
+        KBDTOE_ERR("get thread pool failed for thread_idx %d", thread_idx);
+        return DTOE_FAIL;
+    }
+
+    for (int i = 0; i < thread_pool->channel_num; i++) {
+        struct epoll_event ee = {0};
+        ee.events = EPOLLIN;
+        ee.data.fd = thread_pool->send_channel_fd[i];
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, thread_pool->send_channel_fd[i], &ee) != 0) {
+            KBDTOE_ERR("Failed to add send channel fd %d to epoll, error: %s", thread_pool->send_channel_fd[i], strerror(errno));
+            return DTOE_FAIL;
+        }
+        ee.data.fd = thread_pool->recv_channel_fd[i];
+        if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, thread_pool->recv_channel_fd[i], &ee) != 0) {
+            KBDTOE_ERR("Failed to add recv channel fd %d to epoll, error: %s", thread_pool->recv_channel_fd[i], strerror(errno));
+            return DTOE_FAIL;
+        }
+    }
+
+    return DTOE_SUCCESS;
 }

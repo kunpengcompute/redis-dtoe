@@ -13,7 +13,7 @@
 */
 #include <stdio.h>
 #include "kbdtoe_base.h"
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include "securec.h"
 
 extern struct libdtoe_conn_readable_event_head g_readable_event_head;
@@ -39,13 +39,15 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
         conn->leaked_buff = malloc(leaked_size);
         if (conn->leaked_buff == NULL) {
             KBDTOE_ERR("kbdtoe read malloc leaked buff failed");
-            return 0;
+            errno = ENOMEM;
+            return -1;
         }
         ssize_t recved_bytes = knet_recv_leaked_packet(fd, conn->leaked_buff, leaked_size);
         if (recved_bytes < 0) {
             KBDTOE_ERR("kbdtoe read leaked packet failed");
             free(conn->leaked_buff);
-            return 0;
+            errno = -recved_bytes;
+            return -1;
         }
         conn->leaked_size = leaked_size;
         conn->read_leaked_offset = 0;
@@ -56,7 +58,7 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
         memcpy_ret = memcpy_s(buf, leaked_copy_len, (char *)conn->leaked_buff + conn->read_leaked_offset, leaked_copy_len);
         if (memcpy_ret != EOK) {
            KBDTOE_ERR("kbdtoe read leaked memcpy_s failed");
-           errno = EAGAIN;
+           errno = EFAULT;
            return -1;
         }
         conn->read_leaked_offset += leaked_copy_len;
@@ -91,16 +93,13 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
             if (ret < 0) {
                 knet_recv_mem_loopback(iovs, iov_cnt);
                 KBDTOE_ERR("kbdtoe conn:%p, knet recv failed, error =%d!", conn, ret);
-                if (ret == -ECONNRESET) {
-                    knet_prepare_close(conn->fd);
-                    conn->conn_status = DTOE_CONN_PRE_CLOSING;
-                }
-                return 0;
+                errno = -ret;
+                return -1;
             } else if (iov.iov_base == NULL) {
                 KBDTOE_ERR("knet_rev debug!!!");
                 knet_recv_mem_loopback(iovs, iov_cnt);
-                knet_prepare_close(conn->fd);
-                return 0;
+                errno = ENOBUFS;
+                return -1;
             }
         } else {
             iov = recv_desc->iov;
@@ -111,8 +110,8 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
             if (memcpy_ret != EOK) {
                KBDTOE_ERR("kbdtoe read memcpy_s scene3 failed");
                knet_recv_mem_loopback(iovs, iov_cnt);
-               knet_prepare_close(conn->fd);
-               return 0;
+               errno = EFAULT;
+               return -1;
             }
             read_length += iov.iov_len;
             (void)__atomic_fetch_sub(&conn->recv_desc_num, 1, __ATOMIC_RELAXED);
@@ -132,8 +131,8 @@ ssize_t kbdtoe_read(int fd, void *buf, size_t nbyte)
             if (memcpy_ret != EOK) {
                KBDTOE_ERR("kbdtoe read memcpy_s scene4 failed");
                knet_recv_mem_loopback(iovs, iov_cnt);
-               knet_prepare_close(conn->fd);;
-               return 0;
+               errno = EFAULT;
+               return -1;
             }
             if (recv_desc->data_remain == 0) {
                 recv_desc->data_remain = 1;
