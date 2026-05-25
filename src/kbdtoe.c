@@ -156,17 +156,22 @@ static int libdtoe_all_threads_create_channel()
             return DTOE_FAIL;
         }
         for (int j = 0; j < (g_channel_num / g_thread_num); ++j) {
-            ret = knet_create_send_channel(KNET_EPOLL_SCHD, DTOE_RING_SSQ_DEPTH, &g_thread_pool[i].send_channel[j]);
+            ret = knet_create_send_channel(KNET_SWITCHABLE_SCHD, DTOE_RING_SSQ_DEPTH, &g_thread_pool[i].send_channel[j]);
             if (ret != 0) {
                 KBDTOE_ERR("create send channel failed, ret %d", ret);
                 goto cleanup;
             }
             g_thread_pool[i].send_channel_fd[j] = g_thread_pool[i].send_channel[j]->epoll_fd;
-            ret = knet_create_recv_channel(KNET_EPOLL_SCHD, DTOE_RING_SRQ_DEPTH, &g_thread_pool[i].recv_channel[j]);
+            ret = knet_create_recv_channel(KNET_SWITCHABLE_SCHD, DTOE_RING_SRQ_DEPTH, &g_thread_pool[i].recv_channel[j]);
             if (ret != 0) {
                 KBDTOE_ERR("create recv channel failed, ret %d", ret);
                 goto cleanup;
 
+            }
+            ret = knet_flexda_dtoe_channel_qpc_create(g_thread_pool[i].send_channel[j], g_thread_pool[i].recv_channel[j]);
+            if (ret != 0) {
+                KBDTOE_ERR("create dtoe qpc failed, ret %d", ret);
+                goto cleanup;
             }
             g_thread_pool[i].recv_channel_fd[j] = g_thread_pool[i].recv_channel[j]->epoll_fd;
             g_thread_pool[i].channel_num++;

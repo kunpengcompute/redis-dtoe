@@ -138,6 +138,15 @@ void register_dtoe_close_done_callback(dtoe_close_done_callback_t cb);
   Return Value : None
  **************************************************************/
  void kbdtoe_mempool_stats();
+
+/******************************************************************
+Prototype    : kbdtoe_enable_epoll_mode
+Description  : DTOE channel epoll & poll mode switch
+Input        : epoll_enable
+Output       : None
+Return Value : 0 success, otherwise fail
+**************************************************************/
+int kbdtoe_enable_epoll_mode(uint32_t epoll_enable);
 #ifdef __cplusplus
 }
 #endif

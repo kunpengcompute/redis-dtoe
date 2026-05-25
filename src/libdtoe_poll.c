@@ -49,3 +49,9 @@ bool kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], i
     }
     return false;
 }
+
+int kbdtoe_enable_epoll_mode(uint32_t epoll_enable)
+{
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(0);
+    return knet_flexda_dtoe_channel_epoll_set(thread_pool->send_channel[0], thread_pool->recv_channel[0], epoll_enable);
+}
