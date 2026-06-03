@@ -339,14 +339,24 @@ int kbdtoe_register_channel_fd_to_epoll(int thread_idx, int epoll_fd)
         ee.data.fd = thread_pool->send_channel_fd[i];
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, thread_pool->send_channel_fd[i], &ee) != 0) {
             KBDTOE_ERR("Failed to add send channel fd %d to epoll, error: %s", thread_pool->send_channel_fd[i], strerror(errno));
-            return DTOE_FAIL;
+            goto cleanup;
         }
         ee.data.fd = thread_pool->recv_channel_fd[i];
         if (epoll_ctl(epoll_fd, EPOLL_CTL_ADD, thread_pool->recv_channel_fd[i], &ee) != 0) {
             KBDTOE_ERR("Failed to add recv channel fd %d to epoll, error: %s", thread_pool->recv_channel_fd[i], strerror(errno));
-            return DTOE_FAIL;
+            goto cleanup;
         }
     }
 
     return DTOE_SUCCESS;
+cleanup:
+    for (int i = 0; i < thread_pool->channel_num; i++) {
+        struct epoll_event ee = {0};
+        ee.events = 0;
+        ee.data.fd = thread_pool->send_channel_fd[i];
+        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, thread_pool->send_channel_fd[i], &ee);
+        ee.data.fd = thread_pool->recv_channel_fd[i];
+        epoll_ctl(epoll_fd, EPOLL_CTL_DEL, thread_pool->recv_channel_fd[i], &ee);
+    }
+    return DTOE_FAIL;
 }
