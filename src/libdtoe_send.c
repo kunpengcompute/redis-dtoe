@@ -13,7 +13,7 @@
 */
 #include <stdio.h>
 #include "kbdtoe_base.h"
-#include "dtoe_mempool_mr.h"
+#include "kbdtoe_mempool_mr.h"
 #include "securec.h"
 
 ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
@@ -21,7 +21,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     int ret = 0;
     int memcpy_ret;
     unsigned char *ptr = NULL;
-    ptr = (unsigned char*)dtoe_mempool_alloc(nbyte);
+    ptr = (unsigned char*)kbdtoe_mempool_alloc(nbyte);
     if (ptr == NULL) {
         KBDTOE_ERR("kbdtoe write mempool alloc fail");
         errno = EAGAIN;
@@ -30,8 +30,8 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     memcpy_ret = memcpy_s(ptr, nbyte, buf, nbyte); // 应用程序已保证nbyte的合法
     if (memcpy_ret != EOK) {
         KBDTOE_ERR("kbdtoe write memcpy_s failed");
-        dtoe_mempool_free(0, (uint64_t)ptr);
-        errno = EAGAIN;
+        kbdtoe_mempool_free(0, (uint64_t)ptr);
+        errno = EFAULT;
         return -1;
     }
     struct knet_tx_req tx_req = {0};
@@ -41,7 +41,7 @@ ssize_t kbdtoe_write(int fd, const void *buf, size_t nbyte)
     tx_req.iov[0].iov_len = nbyte;
     tx_req.lkey = get_dtoe_mr_s()->lkey;
     tx_req.wr_id = (uint64_t)ptr;
-    tx_req.free_cb = dtoe_mempool_free;
+    tx_req.free_cb = kbdtoe_mempool_free;
     tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req); // knet_send 异常时返回异常码
     if (ret < 0) {
@@ -60,7 +60,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         total_size += iov[i].iov_len;
     }
     unsigned char *ptr = NULL;
-    ptr = (unsigned char*)dtoe_mempool_alloc(total_size);
+    ptr = (unsigned char*)kbdtoe_mempool_alloc(total_size);
     if (ptr == NULL) {
         KBDTOE_ERR("kbdtoe writev mempool alloc fail");
         errno = EAGAIN;
@@ -71,7 +71,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
         memcpy_ret = memcpy_s(ptr + offset, iov[i].iov_len, iov[i].iov_base, iov[i].iov_len);
         if (memcpy_ret != EOK) {
             KBDTOE_ERR("kbdtoe write memcpy_s failed");
-            dtoe_mempool_free(0, (uint64_t)ptr);
+            kbdtoe_mempool_free(0, (uint64_t)ptr);
             errno = EAGAIN;
             return -1;
         }
@@ -83,7 +83,7 @@ ssize_t kbdtoe_writev(int fd, const struct iovec *iov, int iovcnt)
     tx_req.iov[0].iov_base = ptr;
     tx_req.iov[0].iov_len = total_size;
     tx_req.lkey = get_dtoe_mr_s()->lkey;
-    tx_req.free_cb = dtoe_mempool_free;
+    tx_req.free_cb = kbdtoe_mempool_free;
     tx_req.wr_id = (uint64_t)ptr;
     tx_req.iov_cnt = 1;
     ret = knet_send(fd, &tx_req); // knet_send 异常时返回异常码
