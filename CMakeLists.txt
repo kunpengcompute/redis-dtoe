@@ -19,7 +19,17 @@ add_library(kbdtoe SHARED ${SRC_FILES})
 target_link_directories(kbdtoe PRIVATE ${PROJECT_SRC_DIR}/lib)
 target_link_libraries(kbdtoe PUBLIC -lknet_frame)
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_link_options(kbdtoe PUBLIC -Wl,-z,relro,-z,now,-s)
+	target_compile_options(kbdtoe PUBLIC
+		-Wtrampolines
+		-D_FORTIFY_SOURCE=2
+	)
+
+	target_link_options(kbdtoe PUBLIC
+		-Wl,-z,relro
+		-Wl,-z,now
+		-Wl,-z,noexecstack
+		-Wl,-s
+	)
 endif()
 
 install(FILES  ${PROJECT_SRC_DIR}/include/kbdtoe.h DESTINATION include)
