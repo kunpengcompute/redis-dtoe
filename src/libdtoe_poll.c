@@ -55,3 +55,15 @@ int kbdtoe_enable_epoll_mode(uint32_t epoll_enable)
     libdtoe_thread_pool_s* thread_pool = get_thread_pool(0);
     return knet_flexda_dtoe_channel_epoll_set(thread_pool->send_channel[0], thread_pool->recv_channel[0], epoll_enable);
 }
+
+int32_t kbdtoe_flexda_dtoe_channel_qpc_rx_invalid_set(uint32_t rx_invalid_enable)
+{
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(0);
+    return knet_flexda_dtoe_channel_qpc_rx_invalid_set(thread_pool->recv_channel[0], rx_invalid_enable);
+}
+
+int kbdtoe_flexda_dtoe_receive_channel_scq_is_empty()
+{
+    libdtoe_thread_pool_s* thread_pool = get_thread_pool(0);
+    return knet_flexda_dtoe_receive_channel_is_empty(thread_pool->recv_channel[0]);
+}
