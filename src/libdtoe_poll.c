@@ -17,6 +17,16 @@
 
 extern struct libdtoe_conn_readable_event_head g_readable_event_head;
 
+void kbdtoe_wakeup_epoll(int channel_fd) 
+{
+    int ret;
+    int fake_msg = 0xaabbcc;
+    ret = write(channel_fd, &fake_msg, sizeof(fake_msg));
+    if (ret < 0) {
+        KBDTOE_ERR("kbdtoe kbdtoe thread poll send channel failed, ret:%d\n", ret);
+    }
+}
+
 bool kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], int *nr_recv_event)
 {
     libdtoe_thread_pool_s* thread_pool = get_thread_pool(thread_idx);
@@ -26,12 +36,16 @@ bool kbdtoe_thread_poll(int thread_idx, struct knet_recv_events recv_events[], i
     } else if (nr_send_event >= 0) {
         KBDTOE_DEBUG("kbdtoe kbdtoe thread poll send channel, nr_send_event:%d\n", nr_send_event);
     }
-
-    *nr_recv_event = knet_poll_recv_channel(thread_pool->recv_channel[0], recv_events, DTOE_RECV_MAX_DESC_NUM);
+    int poll_res = -1;
+    *nr_recv_event = knet_poll_recv_channel(thread_pool->recv_channel[0], recv_events, DTOE_RECV_MAX_DESC_NUM, &poll_res);
     for (int i = 0; i < *nr_recv_event; ++i) {
         libdtoe_conn_s *conn = (libdtoe_conn_s *)knet_get_ulp_user_data(recv_events[i].sockfd);
         __atomic_add_fetch(&conn->recv_desc_num, recv_events[i].iov_cnt, __ATOMIC_RELAXED);
         conn->poll_mask = 1;
+    }
+
+    if ( knet_flexda_get_channel_mode(thread_pool->recv_channel[0]) == 0 && poll_res > 0) {
+        kbdtoe_wakeup_epoll(thread_pool->recv_channel_fd[0]);
     }
 
     libdtoe_conn_s *node = NULL;
