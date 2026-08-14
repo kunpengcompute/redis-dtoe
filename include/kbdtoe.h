@@ -149,9 +149,9 @@ Return Value : 0 success, otherwise fail
 int kbdtoe_enable_epoll_mode(uint32_t epoll_enable);
 
 /******************************************************************
-Prototype    : 动态使能或不使能通道的接收能力
+Prototype    : kbdtoe_flexda_dtoe_channel_qpc_rx_invalid_set
 Description  : DTOE rx channel disable or enable
-Input        : uint_32_t rx_invalid_enable 是否使能epoll模式， 1为不使能  0为使能
+Input        : uint32_t rx_invalid_enable 是否使能epoll模式， 1为不使能  0为使能
 Output       : None
 Return Value : 0 success, otherwise fail
 **************************************************************/
@@ -160,11 +160,11 @@ int32_t kbdtoe_flexda_dtoe_channel_qpc_rx_invalid_set(uint32_t rx_invalid_enable
 /******************************************************************
 Prototype    : kbdtoe_flexda_dtoe_receive_channel_scq_is_empty
 Description  : 获取当前通道是否还有有效的事件
-Input        : epoll_enable
+Input        : None
 Output       : None
-Return Value : 0 success, otherwise fail
+Return Value : 1 没有事件, 0 有事件, otherwise failed
 **************************************************************/
-int kbdtoe_flexda_dtoe_receive_channel_scq_is_empty();
+int kbdtoe_flexda_dtoe_receive_channel_scq_is_empty(void);
 #ifdef __cplusplus
 }
 #endif
