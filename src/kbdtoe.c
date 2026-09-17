@@ -122,7 +122,10 @@ static int libdtoe_destory_mbuf(libdtoe_thread_pool_s *thread_info)
         }
         thread_info->connection.conn_pool[i].send_buf = NULL;
     }
-    free(thread_info->send_mr->addr);
+    if (thread_info->send_mr != NULL) {
+        free(thread_info->send_mr->addr);
+        thread_info->send_mr = NULL;
+    }
     return DTOE_SUCCESS;
 }
 
@@ -180,6 +183,14 @@ static int libdtoe_all_threads_create_channel()
     return DTOE_SUCCESS;
     cleanup:
     for (int i = 0; i < g_thread_num; ++i){
+        for (int j = 0; j < g_thread_pool[i].channel_num; ++j) {
+            if (g_thread_pool[i].send_channel[j] != NULL) {
+                knet_destroy_send_channel(g_thread_pool[i].send_channel[j]);
+            }
+            if (g_thread_pool[i].recv_channel[j] != NULL) {
+                knet_destroy_recv_channel(g_thread_pool[i].recv_channel[j]);
+            }
+        }
         libdtoe_destory_mbuf(&g_thread_pool[i]);
     }
     return DTOE_FAIL;
@@ -294,6 +305,20 @@ int kbdtoe_close(int fd)
 
 void kbdtoe_uninit()
 {
+    for (int i = 0; i < g_thread_num; ++i) {
+        for (int j = 0; j < g_thread_pool[i].channel_num; ++j) {
+            if (g_thread_pool[i].send_channel[j] != NULL) {
+                knet_destroy_send_channel(g_thread_pool[i].send_channel[j]);
+            }
+            if (g_thread_pool[i].recv_channel[j] != NULL) {
+                knet_destroy_recv_channel(g_thread_pool[i].recv_channel[j]);
+            }
+        }
+        g_thread_pool[i].channel_num = 0;
+        pthread_spin_destroy(&g_thread_pool[i].connection.offload_lock);
+        free(g_thread_pool[i].connection.conn_pool);
+        g_thread_pool[i].connection.conn_pool = NULL;
+    }
     knet_uninit();
     kbdtoe_mempool_destroy();
 }
