@@ -95,10 +95,11 @@ struct knet_ulp_ops g_dtoe_ulp_ops = {
 static int libdtoe_init_conn_pool_per_thread()
 {
     int conn_num = g_max_conn_num;
-    for (int i = 0; i < g_thread_num; i++) {
+    int i;
+    for (i = 0; i < g_thread_num; i++) {
         g_thread_pool[i].connection.conn_pool = (libdtoe_conn_s*)malloc(conn_num * sizeof(libdtoe_conn_s));
         if (!g_thread_pool[i].connection.conn_pool) {
-            return DTOE_FAIL;
+            goto cleanup;
         }
         (void)memset_s((void*)g_thread_pool[i].connection.conn_pool, conn_num * sizeof(libdtoe_conn_s), 0, conn_num * sizeof(libdtoe_conn_s));
     }
@@ -112,15 +113,28 @@ static int libdtoe_init_conn_pool_per_thread()
         }
     }
     return DTOE_SUCCESS;
+
+cleanup:
+    while (i > 0) {
+        --i;
+        free(g_thread_pool[i].connection.conn_pool);
+        g_thread_pool[i].connection.conn_pool = NULL;
+    }
+    return DTOE_FAIL;
 }
 
 static int libdtoe_destory_mbuf(libdtoe_thread_pool_s *thread_info)
 {
-    for (int i = 0; i < DTOE_MAX_CONN_PER_THREAD; ++i) {
-        if (thread_info->connection.conn_pool[i].send_buf == NULL) {
-            continue;
+    if (thread_info == NULL) {
+        return DTOE_FAIL;
+    }
+    if (thread_info->connection.conn_pool != NULL) {
+        for (unsigned int i = 0; i < g_max_conn_num; ++i) {
+            if (thread_info->connection.conn_pool[i].send_buf == NULL) {
+                continue;
+            }
+            thread_info->connection.conn_pool[i].send_buf = NULL;
         }
-        thread_info->connection.conn_pool[i].send_buf = NULL;
     }
     if (thread_info->send_mr != NULL) {
         free(thread_info->send_mr->addr);
